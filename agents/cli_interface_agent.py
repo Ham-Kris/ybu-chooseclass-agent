@@ -118,12 +118,13 @@ class CLIInterfaceAgent:
             description="YBU 延边大学自动选课代理系统",
             formatter_class=argparse.RawDescriptionHelpFormatter,
             epilog="示例用法：\n"
-                   "  python main.py login                    # 登录教务系统\n"
-                   "  python main.py list --refresh          # 刷新并显示课程列表\n"
-                   "  python main.py grab COURSE_ID          # 选择指定课程\n"
-                   "  python main.py auto-select-all         # 自动选择所有可抢课程\n"
-                   "  python main.py schedule --add ID       # 添加课程监控\n"
-                   "  python main.py status                  # 查看系统状态"
+                   "  python main.py login                              # 登录教务系统（从.env读取凭据）\n"
+                   "  python main.py login -u 学号 -p \"密码\"           # 使用自定义账号密码登录（密码用引号括起来）\n" 
+                   "  python main.py list --refresh                     # 刷新并显示课程列表\n"
+                   "  python main.py grab COURSE_ID                     # 选择指定课程\n"
+                   "  python main.py auto-select-all                    # 自动选择所有可抢课程\n"
+                   "  python main.py schedule --add ID                  # 添加课程监控\n"
+                   "  python main.py status                             # 查看系统状态"
         )
         
         subparsers = parser.add_subparsers(dest='command', help='可用命令')
@@ -132,6 +133,8 @@ class CLIInterfaceAgent:
         login_parser = subparsers.add_parser('login', help='登录教务系统')
         login_parser.add_argument('--headless', action='store_false', default=True, help='显示浏览器界面')
         login_parser.add_argument('--clean', action='store_true', help='清理旧的cookies和数据库文件后重新登录')
+        login_parser.add_argument('--username', '-u', help='指定用户名（学号），不从.env文件读取（会自动清理旧数据）')
+        login_parser.add_argument('--password', '-p', help='指定密码，不从.env文件读取（会自动清理旧数据）。密码包含特殊字符时请用引号括起来，如："my@pass123"')
         
         # 列出课程命令
         list_parser = subparsers.add_parser('list', help='列出课程')
@@ -231,16 +234,27 @@ class CLIInterfaceAgent:
             await self._clean_old_data()
         
         # 获取用户名和密码
-        username = self.config.get('username')
-        password = self.config.get('password')
+        # 优先使用命令行参数，如果没有则从配置文件读取
+        username = getattr(args, 'username', None) or self.config.get('username')
+        password = getattr(args, 'password', None) or self.config.get('password')
+        
+        # 标记是否使用了命令行参数（用于决定是否保存到配置文件）
+        using_cli_credentials = bool(getattr(args, 'username', None) or getattr(args, 'password', None))
+        
+        # 当使用自定义账户密码时，自动清理旧的cookie和数据库文件
+        if using_cli_credentials and not force_clean:
+            console.print("🔄 检测到使用自定义账户，自动清理旧数据...", style="yellow")
+            await self._clean_old_data()
+            force_clean = True  # 设置标志，避免后续重复清理
         
         if not username:
             username = Prompt.ask("请输入学号")
-            self._save_env_var('YBU_USER', username)
+            if not using_cli_credentials and Confirm.ask("是否保存用户名到配置文件？"):
+                self._save_env_var('YBU_USER', username)
         
         if not password:
             password = Prompt.ask("请输入密码", password=True)
-            if Confirm.ask("是否保存密码到配置文件？"):
+            if not using_cli_credentials and Confirm.ask("是否保存密码到配置文件？"):
                 self._save_env_var('YBU_PASS', password)
         
         # 启动浏览器代理
@@ -840,10 +854,11 @@ class CLIInterfaceAgent:
 • 自动化选课和监控
 
 快速开始：
-1. python main.py clean              # 清理旧数据（如遇登录问题）
-2. python main.py login              # 首次登录（出错时使用 --clean）
-3. python main.py list --refresh     # 获取课程列表
-4. python main.py grab COURSE_ID     # 立即抢课
+1. python main.py clean                          # 清理旧数据（如遇登录问题）
+2. python main.py login                          # 首次登录（从.env读取凭据）
+3. python main.py login -u 学号 -p "密码"        # 使用自定义账号密码登录（密码用引号）
+4. python main.py list --refresh                 # 获取课程列表
+5. python main.py grab COURSE_ID                 # 立即抢课
 
 自动化功能：
 • python main.py auto-select-all     # 自动选择所有可抢课程

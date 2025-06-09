@@ -4,8 +4,9 @@
 
 ## 🎯 项目特性
 
-- **智能登录**：自动处理登录流程和 Cookie 管理
-- **验证码识别**：集成 PaddleOCR 引擎，支持自动识别验证码，手动输入备选
+- **智能登录**：支持配置文件和命令行参数两种登录方式，自动处理登录流程和 Cookie 管理
+- **验证码识别**：可选集成 PaddleOCR 引擎，支持自动识别验证码和手动输入模式
+- **账户隔离**：使用自定义登录时自动清理数据，确保不同账户间数据不混淆
 - **智能课程筛选**：支持课程类型、关键词、优先级等多维度筛选
 - **自动选课**：支持单门课程抢课和批量自动选课
 - **时间窗口检测**：智能检测选课时间，非选课时间提供友好提示
@@ -84,8 +85,9 @@ YBU_PASS=********      # 密码
 # 浏览器设置
 HEADLESS=true          # 无头模式
 
-# OCR 引擎
-OCR_ENGINE=paddle      # 验证码识别引擎
+# OCR 引擎设置（可选）
+# OCR_ENGINE=paddle    # 验证码识别引擎，注释掉则使用手动输入
+# OCR_ENGINE=NONE      # 或设置为NONE禁用自动识别
 ```
 
 ### 3. 首次使用
@@ -96,6 +98,9 @@ python3 main.py clean
 
 # 首次登录（会保存 cookies）
 python3 main.py login
+
+# 使用自定义账号密码登录（推荐，避免配置文件泄露）
+python3 main.py login -u 学号 -p "密码"
 
 # 如登录失败，使用清理参数重试
 python3 main.py login --clean
@@ -117,8 +122,9 @@ python3 main.py clean                     # 清理登录文件
 python3 main.py clean --all               # 清理所有数据文件
 
 # 登录系统
-python3 main.py login                     # 普通登录
+python3 main.py login                     # 从配置文件读取凭据登录
 python3 main.py login --clean             # 清理后登录
+python3 main.py login -u 学号 -p "密码"   # 使用自定义账号密码登录（自动清理旧数据）
 
 # 查看课程列表
 python3 main.py list
@@ -134,6 +140,34 @@ python3 main.py test-select COURSE_ID
 # 查看系统状态
 python3 main.py status
 ```
+
+### 🔐 登录方式说明
+
+系统支持两种登录方式：
+
+#### 1. 配置文件登录（传统方式）
+```bash
+# 编辑 .env 文件设置凭据
+nano .env
+
+# 使用配置文件登录
+python3 main.py login
+```
+
+#### 2. 命令行参数登录（推荐）
+```bash
+# 直接指定账号密码（更安全，不会保存到文件）
+python3 main.py login -u 学号 -p "密码"
+
+# 密码包含特殊字符时必须用引号
+python3 main.py login -u 2021001 -p "my@pass123!"
+python3 main.py login -u 2021002 -p "pass word with space"
+```
+
+**重要提示：**
+- 使用命令行参数登录时，系统会自动清理旧的cookie和数据库文件，确保账户数据不混淆
+- 密码包含特殊字符（如@、!、$、空格等）时，必须用引号包围
+- 命令行登录更安全，避免敏感信息存储在配置文件中
 
 ### 🎯 智能自动选课 (核心功能)
 
@@ -221,9 +255,20 @@ python3 main.py scheduler stop
 
 系统支持多种验证码处理方式：
 
-1. **自动识别**：安装 PaddleOCR 后自动识别验证码
-2. **手动输入**：自动识别失败时会弹出图片供手动输入
+1. **自动识别**：设置 `OCR_ENGINE=paddle` 启用 PaddleOCR 自动识别验证码
+2. **手动输入**：不设置 OCR_ENGINE 或设置为 NONE 时使用手动输入模式
 3. **验证码刷新**：自动刷新验证码确保最新状态
+
+**OCR引擎配置：**
+```bash
+# 启用自动识别（需要安装PaddleOCR）
+OCR_ENGINE=paddle
+
+# 禁用自动识别，使用手动输入
+# OCR_ENGINE=NONE
+
+# 或者直接注释掉/删除这一行
+```
 
 ### 时间窗口智能检测
 
@@ -291,7 +336,6 @@ ybu-chooseclass-agent/
 ├── requirements.txt             # 依赖列表
 ├── rules.yml                    # 选课规则示例
 ├── env.example                  # 配置文件示例
-├── test_auto_select_all.py      # 测试脚本
 ├── test_select_course.py        # 测试脚本
 ├── .gitignore                   # Git 忽略文件
 └── README.md                    # 项目文档
@@ -301,7 +345,9 @@ ybu-chooseclass-agent/
 
 ### 选课时间策略
 
-1. **选课开始前**：提前配置好筛选条件，使用 `--dry-run` 测试
+1. **选课开始前**：
+   - 使用命令行参数登录：`python3 main.py login -u 学号 -p "密码"`
+   - 提前配置好筛选条件，使用 `--dry-run` 测试
 2. **选课开始时**：立即运行 `auto-select-all` 进行批量选课
 3. **选课期间**：使用 `grab` 命令针对性抢课
 
@@ -377,6 +423,30 @@ A:
 1. 对于 Windows 用户，确保已安装 Visual Studio Build Tools
 2. 可以跳过 PaddleOCR 安装，系统会自动降级到手动输入验证码
 3. 或使用 CPU 版本：`pip install paddlepaddle -f https://www.paddlepaddle.org.cn/whl/windows/mkl/avx/stable.html`
+4. 在 .env 中注释掉 OCR_ENGINE 或设置为 NONE 来禁用自动识别
+
+### Q: 如何使用自定义账号密码登录？
+A: 
+1. **推荐方式**：`python3 main.py login -u 学号 -p "密码"`
+2. **注意事项**：
+   - 密码包含特殊字符时必须用引号包围
+   - 系统会自动清理旧的cookie和数据库文件
+   - 不会将凭据保存到配置文件中
+
+### Q: 为什么密码要用引号？
+A: 
+密码可能包含shell特殊字符（如@、!、$、空格等），不用引号会导致解析错误。
+```bash
+# 正确写法
+python3 main.py login -u 2021001 -p "my@pass123!"
+
+# 错误写法（会解析失败）
+python3 main.py login -u 2021001 -p my@pass123!
+```
+
+### Q: 使用自定义登录时为什么会清理旧数据？
+A: 
+为了避免不同账户的数据混淆，系统在检测到使用自定义账户时会自动清理旧的cookie和数据库文件。这确保每个账户都有独立的会话状态。
 
 ## 🤝 贡献指南
 
