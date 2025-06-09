@@ -37,3 +37,11 @@ pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
 # 通用系统工具
 psutil>=5.9.0
 setuptools>=68.0.0 
+
+# WebUI依赖
+Flask==2.3.3
+Flask-SocketIO==5.3.6
+Werkzeug==2.3.7
+python-socketio==5.8.0
+eventlet==0.33.3
+python-dotenv==1.0.0 

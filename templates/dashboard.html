@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YBU 选课系统 - 控制台</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="inline-flex items-center justify-center w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+                                <i class="fas fa-graduation-cap text-white text-sm"></i>
+                            </div>
+                        </div>
+                        <div class="ml-3">
+                            <h1 class="text-xl font-semibold text-gray-900">YBU 选课系统</h1>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center text-sm text-gray-500">
+                        <i class="fas fa-user-circle mr-2"></i>
+                        <span id="currentUser">加载中...</span>
+                    </div>
+                    <button 
+                        onclick="window.location.href='/logout'"
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+                    >
+                        <i class="fas fa-sign-out-alt mr-2"></i>退出登录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- 状态卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- YBU登录状态 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">YBU登录状态</p>
+                        <p id="ybuStatus" class="text-2xl font-semibold text-gray-900">未登录</p>
+                    </div>
+                    <div class="p-3 bg-blue-100 rounded-full">
+                        <i class="fas fa-university text-blue-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 可选课程数 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">可选课程</p>
+                        <p id="courseCount" class="text-2xl font-semibold text-gray-900">-</p>
+                    </div>
+                    <div class="p-3 bg-green-100 rounded-full">
+                        <i class="fas fa-book text-green-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 抢课任务数 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">进行中任务</p>
+                        <p id="taskCount" class="text-2xl font-semibold text-gray-900">0</p>
+                    </div>
+                    <div class="p-3 bg-purple-100 rounded-full">
+                        <i class="fas fa-tasks text-purple-600 text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-8">
+            <!-- 课程操作面板 -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border">
+                <h2 class="text-lg font-semibold text-gray-900 mb-6">
+                    <i class="fas fa-book-open mr-2 text-green-600"></i>课程操作
+                </h2>
+
+                <div class="space-y-4">
+                    <button 
+                        id="refreshCoursesBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled
+                    >
+                        <i class="fas fa-sync-alt mr-2"></i>
+                        <span id="refreshBtnText">刷新课程列表</span>
+                    </button>
+
+                    <div class="border-t pt-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">快速抢课</h3>
+                        <div class="flex space-x-2">
+                            <input 
+                                type="text" 
+                                id="quickCourseId" 
+                                placeholder="输入课程ID"
+                                class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                            >
+                            <button 
+                                id="quickGrabBtn"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled
+                            >
+                                <i class="fas fa-bolt mr-1"></i>抢课
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 课程列表 -->
+        <div class="mt-8 bg-white rounded-xl shadow-sm border">
+            <div class="px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-list mr-2 text-indigo-600"></i>可选课程列表
+                </h2>
+            </div>
+            <div id="coursesContainer" class="p-6">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-info-circle text-2xl mb-4"></i>
+                    <p>请先登录YBU系统并刷新课程列表</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务列表 -->
+        <div class="mt-8 bg-white rounded-xl shadow-sm border">
+            <div class="px-6 py-4 border-b">
+                <h2 class="text-lg font-semibold text-gray-900">
+                    <i class="fas fa-tasks mr-2 text-orange-600"></i>抢课任务
+                </h2>
+            </div>
+            <div id="tasksContainer" class="p-6">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-clock text-2xl mb-4"></i>
+                    <p>暂无抢课任务</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息通知 -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border p-4 max-w-sm">
+            <div class="flex items-center">
+                <div id="toastIcon" class="flex-shrink-0 w-6 h-6 mr-3"></div>
+                <div>
+                    <p id="toastTitle" class="text-sm font-medium text-gray-900"></p>
+                    <p id="toastMessage" class="text-sm text-gray-500 mt-1"></p>
+                </div>
+                <button 
+                    onclick="hideToast()"
+                    class="ml-4 text-gray-400 hover:text-gray-600"
+                >
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // 全局变量
+        let socket;
+        let isYbuLoggedIn = false;
+        let courses = {};
+        let tasks = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeSocket();
+            setupEventListeners();
+            loadTasks();
+            
+            // 设置初始状态
+            updateYbuStatus('连接中...');
+            updateYbuStatusIndicator('正在连接YBU系统...', 'loading');
+        });
+
+        // Socket.IO 初始化
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('WebSocket连接成功');
+                // 手动加入用户房间
+                socket.emit('join_user_room', {});
+            });
+
+            socket.on('room_joined', (data) => {
+                console.log('已加入房间:', data.message);
+            });
+
+            socket.on('ybu_login_result', (data) => {
+                if (data.success) {
+                    isYbuLoggedIn = true;
+                    updateYbuStatus('已连接');
+                    updateYbuStatusIndicator('已连接YBU系统', 'success');
+                    document.getElementById('refreshCoursesBtn').disabled = false;
+                    document.getElementById('quickGrabBtn').disabled = false;
+                    showToast('YBU系统', data.message, 'success');
+                } else {
+                    updateYbuStatus('连接失败');
+                    updateYbuStatusIndicator('YBU连接失败', 'error');
+                    showToast('YBU连接失败', data.message, 'error');
+                }
+            });
+
+            socket.on('courses_data', (data) => {
+                setRefreshLoading(false);
+                if (data.success) {
+                    courses = data.data;
+                    updateCoursesDisplay();
+                    showToast('课程数据', data.message, 'success');
+                } else {
+                    showToast('获取课程失败', data.message, 'error');
+                }
+            });
+
+            socket.on('grab_course_result', (data) => {
+                if (data.success) {
+                    showToast('抢课成功', data.message, 'success');
+                } else {
+                    showToast('抢课失败', data.message, 'error');
+                }
+                loadTasks(); // 刷新任务列表
+            });
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+
+            // 刷新课程按钮
+            document.getElementById('refreshCoursesBtn').addEventListener('click', async () => {
+                if (!isYbuLoggedIn) {
+                    showToast('操作失败', '请先登录YBU系统', 'error');
+                    return;
+                }
+
+                setRefreshLoading(true);
+
+                try {
+                    const response = await axios.get('/api/courses');
+                    if (response.data.success) {
+                        showToast('课程刷新', response.data.message, 'info');
+                    } else {
+                        setRefreshLoading(false);
+                        showToast('刷新失败', response.data.message, 'error');
+                    }
+                } catch (error) {
+                    setRefreshLoading(false);
+                    showToast('刷新失败', '网络错误，请重试', 'error');
+                }
+            });
+
+            // 快速抢课按钮
+            document.getElementById('quickGrabBtn').addEventListener('click', async () => {
+                const courseId = document.getElementById('quickCourseId').value.trim();
+                
+                if (!courseId) {
+                    showToast('抢课失败', '请输入课程ID', 'error');
+                    return;
+                }
+
+                if (!isYbuLoggedIn) {
+                    showToast('抢课失败', '请先登录YBU系统', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await axios.post('/api/grab_course', {
+                        course_id: courseId,
+                        course_name: `课程_${courseId}`
+                    });
+
+                    if (response.data.success) {
+                        showToast('抢课任务', response.data.message, 'info');
+                        document.getElementById('quickCourseId').value = '';
+                        loadTasks(); // 刷新任务列表
+                    } else {
+                        showToast('抢课失败', response.data.message, 'error');
+                    }
+                } catch (error) {
+                    showToast('抢课失败', '网络错误，请重试', 'error');
+                }
+            });
+        }
+
+        // 更新YBU状态
+        function updateYbuStatus(status) {
+            document.getElementById('ybuStatus').textContent = status;
+        }
+
+        // 更新YBU状态指示器
+        function updateYbuStatusIndicator(message, type) {
+            const statusText = document.getElementById('ybuStatusText');
+            const statusIcon = document.getElementById('ybuStatusIcon');
+            
+            if (statusText) statusText.textContent = message;
+            
+            if (statusIcon) {
+                statusIcon.className = 'ml-2 ';
+                if (type === 'success') {
+                    statusText.className = 'text-green-600 text-sm';
+                    statusIcon.className += 'fas fa-check-circle text-green-600';
+                } else if (type === 'error') {
+                    statusText.className = 'text-red-600 text-sm';
+                    statusIcon.className += 'fas fa-exclamation-circle text-red-600';
+                } else { // loading或其他状态
+                    statusText.className = 'text-yellow-600 text-sm';
+                    statusIcon.className += 'fas fa-spinner fa-spin text-yellow-600';
+                }
+            }
+        }
+
+        // 更新课程显示
+        function updateCoursesDisplay() {
+            const container = document.getElementById('coursesContainer');
+            
+            if (!courses || Object.keys(courses).length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-info-circle text-2xl mb-4"></i>
+                        <p>暂无可选课程</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            let totalCourses = 0;
+
+            for (const [type, courseList] of Object.entries(courses)) {
+                if (type === 'all' || !Array.isArray(courseList)) continue;
+                
+                totalCourses += courseList.length;
+                
+                html += `
+                    <div class="mb-8">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">${getTypeDisplayName(type)}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                `;
+
+                courseList.forEach(course => {
+                    html += `
+                        <div class="border rounded-lg p-4 hover:shadow-md transition duration-200">
+                            <h4 class="font-medium text-gray-900 mb-2">${course.name}</h4>
+                            <div class="text-sm text-gray-600 space-y-1">
+                                <p><i class="fas fa-id-card mr-2"></i>ID: ${course.id}</p>
+                                <p><i class="fas fa-user mr-2"></i>教师: ${course.teacher || '未知'}</p>
+                                <p><i class="fas fa-clock mr-2"></i>时间: ${course.time || '未知'}</p>
+                            </div>
+                            <button 
+                                onclick="grabCourse('${course.id}', '${course.name}')"
+                                class="mt-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm font-medium transition duration-200"
+                            >
+                                <i class="fas fa-bolt mr-1"></i>抢课
+                            </button>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            }
+
+            container.innerHTML = html;
+            document.getElementById('courseCount').textContent = totalCourses;
+        }
+
+        // 抢课函数
+        async function grabCourse(courseId, courseName) {
+            if (!isYbuLoggedIn) {
+                showToast('抢课失败', '请先登录YBU系统', 'error');
+                return;
+            }
+
+            try {
+                const response = await axios.post('/api/grab_course', {
+                    course_id: courseId,
+                    course_name: courseName
+                });
+
+                if (response.data.success) {
+                    showToast('抢课任务', response.data.message, 'info');
+                    loadTasks(); // 刷新任务列表
+                } else {
+                    showToast('抢课失败', response.data.message, 'error');
+                }
+            } catch (error) {
+                showToast('抢课失败', '网络错误，请重试', 'error');
+            }
+        }
+
+        // 加载任务列表
+        async function loadTasks() {
+            try {
+                const response = await axios.get('/api/tasks');
+                if (response.data.success) {
+                    tasks = response.data.data;
+                    updateTasksDisplay();
+                }
+            } catch (error) {
+                console.error('加载任务失败:', error);
+            }
+        }
+
+        // 更新任务显示
+        function updateTasksDisplay() {
+            const container = document.getElementById('tasksContainer');
+            
+            if (!tasks || tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-clock text-2xl mb-4"></i>
+                        <p>暂无抢课任务</p>
+                    </div>
+                `;
+                document.getElementById('taskCount').textContent = '0';
+                return;
+            }
+
+            let runningTasks = 0;
+            let html = '<div class="space-y-4">';
+
+            tasks.forEach(task => {
+                if (task.status === 'running' || task.status === 'pending') {
+                    runningTasks++;
+                }
+
+                const statusClass = getStatusClass(task.status);
+                const statusIcon = getStatusIcon(task.status);
+
+                html += `
+                    <div class="border rounded-lg p-4 flex items-center justify-between">
+                        <div class="flex-1">
+                            <h4 class="font-medium text-gray-900">${task.course_name}</h4>
+                            <p class="text-sm text-gray-600">课程ID: ${task.course_id}</p>
+                            <p class="text-xs text-gray-500 mt-1">创建时间: ${formatDate(task.created_at)}</p>
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusClass}">
+                                <i class="${statusIcon} mr-1"></i>${getStatusText(task.status)}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+            document.getElementById('taskCount').textContent = runningTasks;
+        }
+
+        // 工具函数
+        function getTypeDisplayName(type) {
+            const typeMap = {
+                'general': '通识课程',
+                'professional': '专业课程',
+                'elective': '选修课程',
+                'public': '公共课程'
+            };
+            return typeMap[type] || type;
+        }
+
+        function getStatusClass(status) {
+            const statusMap = {
+                'pending': 'bg-yellow-100 text-yellow-800',
+                'running': 'bg-blue-100 text-blue-800',
+                'success': 'bg-green-100 text-green-800',
+                'failed': 'bg-red-100 text-red-800',
+                'stopped': 'bg-gray-100 text-gray-800'
+            };
+            return statusMap[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getStatusIcon(status) {
+            const iconMap = {
+                'pending': 'fas fa-clock',
+                'running': 'fas fa-spinner fa-spin',
+                'success': 'fas fa-check-circle',
+                'failed': 'fas fa-times-circle',
+                'stopped': 'fas fa-stop-circle'
+            };
+            return iconMap[status] || 'fas fa-question-circle';
+        }
+
+        function getStatusText(status) {
+            const textMap = {
+                'pending': '等待中',
+                'running': '进行中',
+                'success': '成功',
+                'failed': '失败',
+                'stopped': '已停止'
+            };
+            return textMap[status] || '未知';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+
+
+
+        function setRefreshLoading(loading) {
+            const btn = document.getElementById('refreshCoursesBtn');
+            const text = document.getElementById('refreshBtnText');
+
+            if (loading) {
+                btn.disabled = true;
+                text.textContent = '刷新中...';
+            } else {
+                btn.disabled = false;
+                text.textContent = '刷新课程列表';
+            }
+        }
+
+        // Toast通知
+        function showToast(title, message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const titleEl = document.getElementById('toastTitle');
+            const messageEl = document.getElementById('toastMessage');
+
+            const typeConfig = {
+                'success': { icon: 'fas fa-check-circle text-green-500', bg: 'border-green-200' },
+                'error': { icon: 'fas fa-times-circle text-red-500', bg: 'border-red-200' },
+                'info': { icon: 'fas fa-info-circle text-blue-500', bg: 'border-blue-200' },
+                'warning': { icon: 'fas fa-exclamation-triangle text-yellow-500', bg: 'border-yellow-200' }
+            };
+
+            const config = typeConfig[type] || typeConfig['info'];
+            
+            icon.innerHTML = `<i class="${config.icon}"></i>`;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                hideToast();
+            }, 5000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        // 初始化用户信息
+        document.getElementById('currentUser').textContent = '{{ session.username or "当前用户" }}';
+    </script>
+</body>
+</html> 

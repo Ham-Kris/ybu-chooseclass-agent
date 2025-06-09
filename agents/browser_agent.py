@@ -246,12 +246,21 @@ class BrowserAgent:
             await self.page.wait_for_load_state("networkidle")
 
             # 检查登录状态
-            if await self._check_auth_status():
+            current_url = self.page.url
+            current_title = await self.page.title()
+            console.print(f"🔍 登录后URL: {current_url}", style="blue")
+            console.print(f"🔍 登录后标题: {current_title}", style="blue")
+            
+            auth_status = await self._check_auth_status()
+            console.print(f"🔍 认证状态检查: {auth_status}", style="blue")
+            
+            if auth_status:
                 await self._save_cookies()
                 console.print("✅ 登录成功", style="green")
                 return True
             else:
                 console.print("❌ 登录失败", style="red")
+                console.print(f"   URL检查: 包含jsxsd={('jsxsd' in current_url)}, 不包含login={('login' not in current_url.lower())}", style="red")
                 return False
 
         except Exception as e:
