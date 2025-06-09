@@ -127,6 +127,7 @@ class CLIInterfaceAgent:
         # 登录命令
         login_parser = subparsers.add_parser('login', help='登录教务系统')
         login_parser.add_argument('--headless', action='store_false', default=True, help='显示浏览器界面')
+        login_parser.add_argument('--clean', action='store_true', help='清理旧的cookies和数据库文件后重新登录')
         
         # 列出课程命令
         list_parser = subparsers.add_parser('list', help='列出课程')
@@ -175,6 +176,10 @@ class CLIInterfaceAgent:
         # 状态命令
         subparsers.add_parser('status', help='查看系统状态')
         
+        # 清理命令
+        clean_parser = subparsers.add_parser('clean', help='清理旧的cookies和数据库文件')
+        clean_parser.add_argument('--all', action='store_true', help='清理所有数据文件（包括日志）')
+        
         return parser
 
     async def run(self, args: List[str] = None) -> None:
@@ -200,6 +205,8 @@ class CLIInterfaceAgent:
                 await self._handle_scheduler(parsed_args)
             elif parsed_args.command == 'test-select':
                 await self._handle_test_select(parsed_args)
+            elif parsed_args.command == 'clean':
+                await self._handle_clean(parsed_args)
             else:
                 await self._show_help()
                 
@@ -212,6 +219,12 @@ class CLIInterfaceAgent:
     async def _handle_login(self, args: argparse.Namespace):
         """处理登录命令"""
         console.print(Panel("🔐 登录延边大学教务系统", style="blue"))
+        
+        # 检查是否需要强制清理
+        force_clean = getattr(args, 'clean', False)
+        
+        if force_clean:
+            await self._clean_old_data()
         
         # 获取用户名和密码
         username = self.config.get('username')
@@ -230,6 +243,19 @@ class CLIInterfaceAgent:
         await self.browser_agent.start()
         
         try:
+            # 首先检查已有的 cookies 是否有效
+            if not force_clean and await self._check_existing_session():
+                console.print("✅ 已有有效登录状态，无需重新登录", style="green")
+                return
+            
+            # 如果 cookies 无效，清理旧数据并重新登录
+            console.print("🧹 清理旧的登录状态...", style="yellow")
+            await self._clean_old_data()
+            
+            # 重新启动浏览器以使用清理后的状态
+            await self.browser_agent.stop()
+            await self.browser_agent.start()
+            
             # 获取验证码
             captcha_image = await self.browser_agent.get_captcha_image()
             captcha_code = ""
@@ -251,11 +277,101 @@ class CLIInterfaceAgent:
                 console.print("✅ 登录成功！", style="green")
                 logger.info("Login successful", extra={'action': 'login'})
             else:
-                console.print("❌ 登录失败", style="red")
+                console.print("❌ 登录失败，建议使用 --clean 参数重试", style="red")
+                console.print("💡 使用方法：python main.py login --clean", style="blue")
                 logger.warning("Login failed", extra={'action': 'login'})
                 
+        except Exception as e:
+            console.print(f"❌ 登录过程中出错：{e}", style="red")
+            console.print("💡 建议使用 --clean 参数清理旧数据后重试", style="blue")
         finally:
             await self.browser_agent.stop()
+
+    async def _check_existing_session(self) -> bool:
+        """检查已有的登录会话是否有效"""
+        try:
+            # 尝试访问需要认证的页面
+            test_url = f"{self.browser_agent.base_url}/jsxsd/framework/xsMain.jsp"
+            response = await self.browser_agent.page.goto(test_url, wait_until="networkidle", timeout=10000)
+            
+            # 检查是否被重定向到登录页面
+            current_url = self.browser_agent.page.url
+            if "login" in current_url.lower() or response.status == 401:
+                return False
+            
+            # 检查页面内容是否包含用户信息
+            content = await self.browser_agent.page.content()
+            if "退出系统" in content or "学生姓名" in content:
+                return True
+            
+            return False
+        except Exception:
+            return False
+
+    async def _clean_old_data(self):
+        """清理旧的cookies和数据库文件"""
+        import os
+        
+        files_to_clean = [
+            "cookies.json",
+            "ybu_courses.db",
+            "courses.db"  # 可能的旧数据库文件名
+        ]
+        
+        cleaned_files = []
+        for file_path in files_to_clean:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    cleaned_files.append(file_path)
+                except Exception as e:
+                    console.print(f"⚠️ 无法删除文件 {file_path}: {e}", style="yellow")
+        
+        if cleaned_files:
+            console.print(f"🧹 已清理文件：{', '.join(cleaned_files)}", style="blue")
+        else:
+            console.print("🧹 无需清理旧文件", style="blue")
+
+    async def _handle_clean(self, args: argparse.Namespace):
+        """处理清理命令"""
+        console.print(Panel("🧹 清理系统数据", style="blue"))
+        
+        import os
+        
+        if args.all:
+            # 清理所有数据文件
+            files_to_clean = [
+                "cookies.json",
+                "ybu_courses.db", 
+                "courses.db",
+                "ybu_agent.jsonl",
+                "temp_captcha.jpg",
+                "processed_captcha.jpg",
+                "debug_xklc_view.html",
+                "debug_course_page.html"
+            ]
+        else:
+            # 只清理登录相关文件
+            files_to_clean = [
+                "cookies.json",
+                "ybu_courses.db",
+                "courses.db"
+            ]
+        
+        cleaned_files = []
+        for file_path in files_to_clean:
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    cleaned_files.append(file_path)
+                except Exception as e:
+                    console.print(f"⚠️ 无法删除文件 {file_path}: {e}", style="yellow")
+        
+        if cleaned_files:
+            console.print(f"✅ 已清理文件：{', '.join(cleaned_files)}", style="green")
+            console.print("💡 现在可以运行 'python main.py login' 重新登录", style="blue")
+        else:
+            console.print("🧹 无文件需要清理", style="yellow")
 
     async def _handle_list(self, args: argparse.Namespace):
         """处理课程列表命令"""
@@ -717,9 +833,10 @@ class CLIInterfaceAgent:
 • 自动化选课和监控
 
 快速开始：
-1. python main.py login              # 首次登录
-2. python main.py list --refresh     # 获取课程列表
-3. python main.py grab COURSE_ID     # 立即抢课
+1. python main.py clean              # 清理旧数据（如遇登录问题）
+2. python main.py login              # 首次登录（出错时使用 --clean）
+3. python main.py list --refresh     # 获取课程列表
+4. python main.py grab COURSE_ID     # 立即抢课
 
 自动化功能：
 • python main.py auto-select-all     # 自动选择所有可抢课程

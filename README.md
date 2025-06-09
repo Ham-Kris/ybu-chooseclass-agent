@@ -91,8 +91,14 @@ OCR_ENGINE=paddle      # 验证码识别引擎
 ### 3. 首次使用
 
 ```bash
+# 清理旧数据（可选，如遇登录问题时使用）
+python3 main.py clean
+
 # 首次登录（会保存 cookies）
 python3 main.py login
+
+# 如登录失败，使用清理参数重试
+python3 main.py login --clean
 
 # 获取课程列表（需要在选课时间内）
 python3 main.py list --refresh
@@ -106,8 +112,13 @@ python3 main.py status
 ### 基本命令
 
 ```bash
+# 清理旧数据（解决登录问题）
+python3 main.py clean                     # 清理登录文件
+python3 main.py clean --all               # 清理所有数据文件
+
 # 登录系统
-python3 main.py login
+python3 main.py login                     # 普通登录
+python3 main.py login --clean             # 清理后登录
 
 # 查看课程列表
 python3 main.py list
@@ -335,6 +346,14 @@ A: 检查筛选条件是否过于严格，或当前课程无剩余名额。
 
 ### Q: 如何提高选课成功率？
 A: 建议在选课开始的瞬间运行，设置合理的筛选条件，使用专业课优先策略。
+
+### Q: 登录时提示需要删除 cookies.json 和 ybu_courses.db 怎么办？
+A: 
+1. **推荐方案**：使用 `python3 main.py clean` 自动清理
+2. **或使用带清理的登录**：`python3 main.py login --clean`
+3. **手动删除**：`rm cookies.json ybu_courses.db` (Linux/Mac) 或在Windows中删除这两个文件
+
+系统现在会自动检测过期的登录状态并提供解决建议。
 
 ### Q: 系统运行时出现错误怎么办？
 A: 请检查网络连接、登录凭据是否正确，并确保在选课时间内运行。

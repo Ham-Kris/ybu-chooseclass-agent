@@ -95,8 +95,14 @@ OCR_ENGINE=paddle
 # 激活虚拟环境（如果尚未激活）
 venv\Scripts\activate
 
+# 清理旧数据（如有登录问题）
+python main.py clean
+
 # 测试登录
 python main.py login
+
+# 如果登录失败，清理后重试
+python main.py login --clean
 
 # 查看系统状态
 python main.py status

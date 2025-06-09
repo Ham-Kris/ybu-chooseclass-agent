@@ -45,7 +45,9 @@ echo ====================================
 echo 安装完成！
 echo.
 echo 使用方法：
+echo   python main.py clean           # 清理旧数据
 echo   python main.py login           # 首次登录
+echo   python main.py login --clean   # 清理后登录
 echo   python main.py list            # 查看课程列表  
 echo   python main.py auto-select-all # 智能自动选课
 echo.
