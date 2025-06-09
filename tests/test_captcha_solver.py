@@ -38,7 +38,16 @@ class TestCaptchaSolverAgent:
         processed = self.agent.preprocess_image(img_data)
         
         assert processed is not None
-        assert isinstance(processed, np.ndarray)
+        assert isinstance(processed, bytes)
+        
+        # 验证返回的是有效的图片数据
+        # 尝试将处理后的字节数据重新解码为图片
+        try:
+            processed_image = Image.open(io.BytesIO(processed))
+            assert processed_image.size[0] > 0  # 宽度大于0
+            assert processed_image.size[1] > 0  # 高度大于0
+        except Exception as e:
+            pytest.fail(f"处理后的图片数据无效: {e}")
     
     def test_recognize_text_without_ai(self):
         """测试在手动模式下的文本识别"""
