@@ -1,6 +1,6 @@
 # YBU 延边大学自动选课代理系统
 
-本项目是一个延边大学教务系统自动选课代理系统，能够自动登录并选择所有可选课程，仅供参考参考和学习使用，禁止任何人在任何平台出售/出租本程序提供的服务。
+本项目是一个延边大学教务系统自动选课代理系统，能够自动登录并选择所有可选课程，仅供学习和研究使用，禁止任何人在任何平台出售/出租本程序提供的服务。
 
 ## 🎯 项目特性
 
@@ -12,7 +12,7 @@
 - **冲突检测**：智能检测时间冲突，避免选课冲突
 - **可视化界面**：丰富的命令行界面和彩色日志输出
 
-## 🏗️ 代理架构
+## 🏗️ 系统架构
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
@@ -33,8 +33,8 @@
 
 ```bash
 # 克隆项目
-git clone <project-url>
-cd ybu-choose-classes
+git clone https://github.com/Ham-Kris/ybu-chooseclass-agent.git
+cd ybu-chooseclass-agent
 
 # 安装依赖
 pip install -r requirements.txt
@@ -54,6 +54,19 @@ cp env.example .env
 
 # 编辑配置文件，填写学号和密码
 nano .env
+```
+
+配置文件示例：
+```bash
+# 用户凭据
+YBU_USER=202xxxxx      # 学号
+YBU_PASS=********      # 密码
+
+# 浏览器设置
+HEADLESS=true          # 无头模式
+
+# OCR 引擎
+OCR_ENGINE=paddle      # 验证码识别引擎
 ```
 
 ### 3. 首次使用
@@ -92,7 +105,7 @@ python3 main.py test-select COURSE_ID
 python3 main.py status
 ```
 
-### 🎯 智能自动选课 (重点功能)
+### 🎯 智能自动选课 (核心功能)
 
 **auto-select-all** 是本系统的核心功能，支持智能筛选和批量自动选课：
 
@@ -172,45 +185,6 @@ python3 main.py scheduler status
 python3 main.py scheduler stop
 ```
 
-## ⚙️ 配置说明
-
-### 环境变量 (.env)
-
-```bash
-# 用户凭据
-YBU_USER=202xxxxx      # 学号
-YBU_PASS=********      # 密码
-
-# 浏览器设置
-HEADLESS=true          # 无头模式
-
-# OCR 引擎
-OCR_ENGINE=paddle      # 验证码识别引擎
-
-# 代理设置（可选）
-PROXY=                 # HTTP 代理
-```
-
-### 调度器配置
-
-调度器会自动创建 `scheduler_config.json` 配置文件：
-
-```json
-{
-  "monitoring": {
-    "enabled": true,
-    "interval_minutes": 5,
-    "course_check_hour": 6,
-    "course_check_minute": 0
-  },
-  "auto_enrollment": {
-    "enabled": false,
-    "retry_interval_minutes": 2,
-    "max_retries": 30
-  }
-}
-```
-
 ## 🔧 高级功能
 
 ### 验证码处理机制
@@ -269,8 +243,8 @@ python3 main.py auto-select-all --dry-run --max-courses 2
 ## 📁 项目结构
 
 ```
-ybu-choose-classes/
-├── agents/                      # AI 代理模块
+ybu-chooseclass-agent/
+├── agents/                      # 代理模块
 │   ├── __init__.py
 │   ├── browser_agent.py         # 浏览器代理（核心）
 │   ├── captcha_solver_agent.py  # 验证码识别代理
@@ -278,15 +252,19 @@ ybu-choose-classes/
 │   ├── scheduler_agent.py       # 调度代理
 │   └── cli_interface_agent.py   # 命令行界面代理
 ├── tests/                       # 测试文件
+│   ├── __init__.py
+│   └── test_captcha_solver.py
+├── miscellaneous/               # 其他工具
+│   ├── chooseclass.py
+│   └── pre_captcha.py
 ├── main.py                      # 主程序入口
 ├── requirements.txt             # 依赖列表
 ├── rules.yml                    # 选课规则示例
 ├── env.example                  # 配置文件示例
-├── .env                         # 用户配置文件
-├── ybu_courses.db              # SQLite 数据库
-├── ybu_agent.jsonl             # 日志文件
-├── LICENSE                     # 开源许可证
-└── README.md                   # 项目文档
+├── test_auto_select_all.py      # 测试脚本
+├── test_select_course.py        # 测试脚本
+├── .gitignore                   # Git 忽略文件
+└── README.md                    # 项目文档
 ```
 
 ## 💡 使用技巧
@@ -338,6 +316,9 @@ A: 检查筛选条件是否过于严格，或当前课程无剩余名额。
 
 ### Q: 如何提高选课成功率？
 A: 建议在选课开始的瞬间运行，设置合理的筛选条件，使用专业课优先策略。
+
+### Q: 系统运行时出现错误怎么办？
+A: 请检查网络连接、登录凭据是否正确，并确保在选课时间内运行。
 
 ## 🤝 贡献指南
 
