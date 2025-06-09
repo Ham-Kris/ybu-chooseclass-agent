@@ -1,13 +1,39 @@
-playwright>=1.44
-paddleocr>=2.7
-python-dotenv>=1.0
-apscheduler>=3.10
-pandas>=2.2
-opencv-python>=4.10
-rich>=13.7
-requests>=2.31
-beautifulsoup4>=4.12
-pillow>=10.0
-pytest>=7.4
-lxml>=4.9
-pyyaml>=6.0 
+# 核心依赖
+playwright>=1.44.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# 异步调度相关
+apscheduler>=3.10.0
+
+# 数据处理
+pandas>=2.2.0
+pyyaml>=6.0.0
+python-dotenv>=1.0.0
+
+# OCR(可选)
+# paddlepaddle>=2.5.0
+# paddleocr>=2.7.0
+
+# 图像处理
+opencv-python>=4.10.0
+pillow>=10.0.0
+numpy>=1.24.0
+
+# UI和日志
+rich>=13.7.0
+
+# 测试
+pytest>=7.4.0
+
+# Windows系统兼容性
+colorama>=0.4.6; sys_platform == "win32"
+pywin32>=306; sys_platform == "win32" and python_version >= "3.8"
+
+# macOS系统兼容性
+pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
+
+# 通用系统工具
+psutil>=5.9.0
+setuptools>=68.0.0 

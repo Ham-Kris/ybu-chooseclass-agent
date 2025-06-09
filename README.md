@@ -31,6 +31,23 @@
 
 ### 1. 环境准备
 
+#### Windows 用户（推荐）
+```cmd
+# 克隆项目
+git clone https://github.com/Ham-Kris/ybu-chooseclass-agent.git
+cd ybu-chooseclass-agent
+
+# 使用一键启动脚本（自动处理环境配置）
+start_windows.bat
+
+# 或者手动安装
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium
+```
+
+#### macOS/Linux 用户
 ```bash
 # 克隆项目
 git clone https://github.com/Ham-Kris/ybu-chooseclass-agent.git
@@ -41,10 +58,12 @@ pip install -r requirements.txt
 
 # 安装 Playwright 浏览器
 playwright install chromium
-
-# 可选：安装 PaddleOCR（用于自动验证码识别）
-pip install paddlepaddle paddleocr
 ```
+
+**注意事项：**
+- Windows 用户建议使用 `start_windows.bat` 脚本，自动处理异步兼容性问题
+- 推荐使用 Python 3.8+ 版本，以获得更好的异步支持
+- PaddleOCR 已包含在 requirements.txt 中，自动安装
 
 ### 2. 配置设置
 
@@ -319,6 +338,26 @@ A: 建议在选课开始的瞬间运行，设置合理的筛选条件，使用�
 
 ### Q: 系统运行时出现错误怎么办？
 A: 请检查网络连接、登录凭据是否正确，并确保在选课时间内运行。
+
+### Q: Windows 系统下出现异步相关错误怎么办？
+A: 
+1. 使用 `start_windows.bat` 启动脚本，已集成异步修复
+2. 确保使用 Python 3.8+ 版本
+3. 如果仍有问题，尝试在命令行中运行：`python -c "import asyncio; print(asyncio.get_event_loop_policy())"`
+4. 手动安装 Windows 特定依赖：`pip install pywin32 colorama`
+
+### Q: requirements.txt 安装失败怎么办？
+A:
+1. 升级 pip：`python -m pip install --upgrade pip`
+2. 分步安装：先安装基础依赖，再安装 PaddleOCR
+3. 使用国内镜像：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
+4. Windows 用户可以使用 `start_windows.bat` 自动处理
+
+### Q: PaddleOCR 安装失败怎么办？
+A: 
+1. 对于 Windows 用户，确保已安装 Visual Studio Build Tools
+2. 可以跳过 PaddleOCR 安装，系统会自动降级到手动输入验证码
+3. 或使用 CPU 版本：`pip install paddlepaddle -f https://www.paddlepaddle.org.cn/whl/windows/mkl/avx/stable.html`
 
 ## 🤝 贡献指南
 

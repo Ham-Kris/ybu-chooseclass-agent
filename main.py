@@ -14,7 +14,26 @@ python main.py scheduler start          # 启动调度器
 import asyncio
 import sys
 import os
+import platform
 from pathlib import Path
+
+# Windows 异步兼容性修复
+if platform.system() == 'Windows':
+    # 设置 Windows 事件循环策略
+    if sys.version_info >= (3, 8):
+        try:
+            # 在 Windows 上使用 ProactorEventLoop 来避免异步问题
+            asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+        except AttributeError:
+            # 如果没有 WindowsProactorEventLoopPolicy，则使用默认策略
+            pass
+    
+    # 修复Windows下的显示问题
+    try:
+        import colorama
+        colorama.init(autoreset=True)
+    except ImportError:
+        pass
 
 # 添加项目根目录到 Python 路径
 project_root = Path(__file__).parent
