@@ -10,6 +10,10 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM 检查Python版本并应用修复
+echo 检查 Python 版本和异步兼容性...
+python -c "import sys; print(f'Python 版本: {sys.version}'); import platform; print(f'操作系统: {platform.system()} {platform.release()}')"
+
 REM 检查是否有虚拟环境
 if not exist "venv" (
     echo 创建虚拟环境...
@@ -24,6 +28,10 @@ REM 升级pip
 echo 升级 pip...
 python -m pip install --upgrade pip
 
+REM 安装Windows专用依赖
+echo 安装 Windows 专用依赖...
+pip install colorama pywin32
+
 REM 安装依赖
 echo 安装依赖包...
 pip install -r requirements.txt
@@ -31,6 +39,10 @@ pip install -r requirements.txt
 REM 安装 Playwright 浏览器
 echo 安装 Playwright 浏览器...
 playwright install chromium
+
+REM 测试异步兼容性修复
+echo 测试异步兼容性修复...
+python fix_windows_async.py
 
 REM 检查配置文件
 if not exist ".env" (
@@ -42,7 +54,12 @@ if not exist ".env" (
 
 echo.
 echo ====================================
-echo 安装完成！
+echo 安装完成！已应用 Windows 异步兼容性修复
+echo.
+echo 🔧 针对您遇到的错误已进行专门优化：
+echo   - 禁用了异步资源警告
+echo   - 修复了管道传输错误 
+echo   - 设置了正确的事件循环策略
 echo.
 echo 使用方法：
 echo   python main.py clean           # 清理旧数据

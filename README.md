@@ -405,11 +405,24 @@ A:
 A: 请检查网络连接、登录凭据是否正确，并确保在选课时间内运行。
 
 ### Q: Windows 系统下出现异步相关错误怎么办？
+**特别是 Python 3.13 出现的管道传输错误（`ValueError: I/O operation on closed pipe`）**
+
 A: 
-1. 使用 `start_windows.bat` 启动脚本，已集成异步修复
-2. 确保使用 Python 3.8+ 版本
-3. 如果仍有问题，尝试在命令行中运行：`python -c "import asyncio; print(asyncio.get_event_loop_policy())"`
-4. 手动安装 Windows 特定依赖：`pip install pywin32 colorama`
+1. **推荐方案**：使用 `start_windows.bat` 启动脚本，已集成最新的异步修复
+2. **测试修复**：运行 `python fix_windows_async.py` 测试异步兼容性
+3. **手动修复**：
+   ```cmd
+   # 安装Windows专用依赖
+   pip install colorama pywin32
+   
+   # 设置环境变量禁用警告
+   set PYTHONWARNINGS=ignore::ResourceWarning
+   
+   # 使用修复后的启动方式
+   python main.py [命令]
+   ```
+4. **Python 3.13 用户**：项目已针对最新版本进行优化，包括管道错误修复
+5. 确保使用 Python 3.8+ 版本（推荐 3.11+）
 
 ### Q: requirements.txt 安装失败怎么办？
 A:

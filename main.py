@@ -28,6 +28,29 @@ if platform.system() == 'Windows':
             # 如果没有 WindowsProactorEventLoopPolicy，则使用默认策略
             pass
     
+    # Python 3.11 专用修复：禁用资源警告和管道错误
+    if sys.version_info >= (3, 11):
+        import warnings
+        warnings.filterwarnings("ignore", category=ResourceWarning, module="asyncio")
+        
+        # 设置环境变量禁用某些警告
+        os.environ.setdefault('PYTHONWARNINGS', 'ignore::ResourceWarning')
+        
+        # 针对管道错误的特殊处理
+        try:
+            import asyncio.windows_utils
+            original_fileno = asyncio.windows_utils.PipeHandle.fileno
+            
+            def safe_fileno(self):
+                try:
+                    return original_fileno(self)
+                except ValueError:
+                    return -1
+            
+            asyncio.windows_utils.PipeHandle.fileno = safe_fileno
+        except (ImportError, AttributeError):
+            pass
+    
     # 修复Windows下的显示问题
     try:
         import colorama
@@ -183,5 +206,35 @@ async def main():
 
 
 if __name__ == "__main__":
-    # 运行主程序
-    asyncio.run(main()) 
+    # Windows 专用异步运行机制
+    if platform.system() == 'Windows':
+        try:
+            # 运行主程序
+            asyncio.run(main())
+        except SystemExit:
+            pass
+        except KeyboardInterrupt:
+            print("\n👋 用户中断，正在安全退出...")
+        except Exception as e:
+            print(f"❌ 程序执行出错：{e}")
+        finally:
+            # 强制清理所有异步资源
+            try:
+                loop = asyncio.get_event_loop()
+                if not loop.is_closed():
+                    # 取消所有挂起的任务
+                    pending = asyncio.all_tasks(loop)
+                    for task in pending:
+                        task.cancel()
+                    
+                    # 等待任务完成或取消
+                    if pending:
+                        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                    
+                    # 关闭循环
+                    loop.close()
+            except Exception:
+                pass
+    else:
+        # 非Windows系统使用标准运行方式
+        asyncio.run(main()) 
