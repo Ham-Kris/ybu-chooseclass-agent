@@ -84,9 +84,13 @@ class CLIInterfaceAgent:
             'username': os.getenv('YBU_USER', ''),
             'password': os.getenv('YBU_PASS', ''),
             'headless': os.getenv('HEADLESS', 'true').lower() == 'true',
-            'ocr_engine': os.getenv('OCR_ENGINE', 'paddle'),
             'proxy': os.getenv('PROXY', ''),
         }
+        
+        # 只有当环境变量设置了有效的 OCR_ENGINE 时才添加到配置中
+        ocr_engine = os.getenv('OCR_ENGINE')
+        if ocr_engine and ocr_engine.upper() not in ['NONE', '']:
+            self.config['ocr_engine'] = ocr_engine
 
     def _save_env_var(self, key: str, value: str):
         """保存环境变量到 .env 文件"""
@@ -748,7 +752,10 @@ class CLIInterfaceAgent:
         config_table.add_row("用户名", self.config.get('username', '未设置'))
         config_table.add_row("密码", "已设置" if self.config.get('password') else "未设置")
         config_table.add_row("浏览器模式", "有头" if not self.config.get('headless') else "无头")
-        config_table.add_row("OCR引擎", self.config.get('ocr_engine', 'paddle'))
+        
+        # 只有当设置了 OCR_ENGINE 时才显示 OCR 引擎信息
+        if 'ocr_engine' in self.config:
+            config_table.add_row("OCR引擎", self.config.get('ocr_engine'))
         
         console.print(config_table)
         

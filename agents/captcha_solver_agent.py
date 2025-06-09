@@ -25,12 +25,12 @@ console = Console()
 
 
 class CaptchaSolverAgent:
-    def __init__(self, engine: str = "paddle", model_path: str = None):
+    def __init__(self, engine: str = None, model_path: str = None):
         """
         初始化验证码识别代理
         
         Args:
-            engine: 识别引擎 ('paddle', 'custom')
+            engine: 识别引擎 ('paddle', 'custom', None)
             model_path: 自定义模型路径
         """
         self.engine = engine
@@ -58,6 +58,9 @@ class CaptchaSolverAgent:
         elif self.engine == "custom" and self.model_path:
             # 这里可以加载自定义 CRNN 模型
             console.print("🔍 自定义模型引擎已初始化", style="green")
+        elif self.engine is None:
+            # 当没有设置 OCR_ENGINE 环境变量时，不显示任何信息，静默使用手动输入
+            self.ocr = None
         else:
             console.print("⚠️ 使用基础预处理，需要手动输入", style="yellow")
 
