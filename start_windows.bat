@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 >nul
 echo YBU 延边大学自动选课代理系统 - Windows 启动脚本
 
@@ -75,11 +76,17 @@ echo.
 REM 如果提供了命令行参数，直接运行
 if "%1"=="" (
     echo 请输入要执行的命令（不含 python main.py）：
-    set /p command=^> 
+    echo 示例: login, list, auto-select-all
+    echo 留空直接按回车将退出脚本
+    set /p command="命令: "
     if not "!command!"=="" (
+        echo 执行: python main.py !command!
         python main.py !command!
+    ) else (
+        echo 未输入命令，退出脚本
     )
 ) else (
+    echo 执行: python main.py %*
     python main.py %*
 )
 

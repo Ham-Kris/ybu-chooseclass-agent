@@ -41,6 +41,9 @@ cd ybu-chooseclass-agent
 # 使用一键启动脚本（自动处理环境配置）
 start_windows.bat
 
+# 或者使用快速启动脚本（避免命令行问题）
+quick_start.bat
+
 # 或者手动安装
 python -m venv venv
 venv\Scripts\activate
@@ -437,6 +440,20 @@ A:
 2. 可以跳过 PaddleOCR 安装，系统会自动降级到手动输入验证码
 3. 或使用 CPU 版本：`pip install paddlepaddle -f https://www.paddlepaddle.org.cn/whl/windows/mkl/avx/stable.html`
 4. 在 .env 中注释掉 OCR_ENGINE 或设置为 NONE 来禁用自动识别
+
+### Q: 启动脚本提示 "invalid choice: '!command!'" 怎么办？
+A: 这是Windows批处理脚本的变量扩展问题，提供以下解决方案：
+1. **方案一**：使用快速启动脚本 `quick_start.bat`
+2. **方案二**：直接在命令行运行：
+   ```cmd
+   # 激活虚拟环境
+   venv\Scripts\activate
+   
+   # 直接运行命令
+   python main.py login
+   python main.py auto-select-all
+   ```
+3. **方案三**：使用修复后的启动脚本（已添加 `setlocal enabledelayedexpansion`）
 
 ### Q: 如何使用自定义账号密码登录？
 A: 
