@@ -1,0 +1,43 @@
+MIT License
+
+Copyright (c) 2024 YBU Choose Classes Agent by GitHub@Ham-Kris
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+NON-COMMERCIAL USE RESTRICTION:
+This Software is intended for educational and research purposes only. 
+Commercial use, including but not limited to selling, renting, or providing 
+commercial services based on this Software, is strictly prohibited.
+
+EDUCATIONAL USE NOTICE:
+This Software is designed specifically for the Yanbian University course 
+selection system. Users must comply with all applicable university policies 
+and regulations when using this Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+DISCLAIMER:
+This project is developed independently and is not affiliated with, endorsed by, 
+or connected to Yanbian University. Users are responsible for ensuring their use 
+of this Software complies with all applicable laws, regulations, and institutional 
+policies. The developers of this Software accept no responsibility for any 
+consequences arising from its use.
+
+ACKNOWLEDGMENTS:
+This project was inspired by and references the work of @xuyanhenry's 
+"ybu-Grab-classes" project (https://github.com/xuyanhenry/ybu-Grab-classes).
+We express our gratitude for the valuable reference and inspiration provided. 
