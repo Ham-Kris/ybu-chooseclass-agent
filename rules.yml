@@ -1,0 +1,51 @@
+# YBU 选课偏好规则配置文件
+# 此文件定义了自动选课的偏好设置
+
+# 课程类型偏好（可选：professional, public）
+course_types:
+  - professional
+  - public
+
+# 关键词筛选（课程名称包含这些关键词的会被优先考虑）
+keywords:
+  - "计算机"
+  - "软件"
+  - "数据结构"
+  - "算法"
+
+# 排除关键词（课程名称包含这些关键词的会被排除）
+exclude_keywords:
+  - "体育"
+  - "军事"
+
+# 课程类型优先级（数值越高优先级越高）
+priority_types:
+  professional: 2.0
+  public: 1.0
+
+# 关键词优先级（数值越高优先级越高）
+priority_keywords:
+  "计算机": 3.0
+  "软件工程": 2.5
+  "数据结构": 2.0
+  "算法": 2.0
+  "英语": 1.5
+
+# 时间偏好（暂未实现）
+time_preferences:
+  avoid_early_morning: true  # 避免早上8点前的课
+  avoid_late_evening: true   # 避免晚上8点后的课
+  preferred_days:            # 偏好的上课天数
+    - 1  # 周一
+    - 2  # 周二
+    - 3  # 周三
+    - 4  # 周四
+    - 5  # 周五
+
+# 教师偏好（暂未实现）
+teacher_preferences:
+  preferred_teachers:
+    - "张教授"
+    - "李老师"
+  avoided_teachers:
+    - "严格老师" 

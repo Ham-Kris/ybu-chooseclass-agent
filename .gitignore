@@ -1,0 +1,25 @@
+.env
+.venv
+.vscode
+.idea
+.pytest_cache
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+__pycache__
+.pytest_cache
+.pylintrc
+.ruff_cache
+.ruff_cache
+
+temp_captcha.jpg
+
+courses.db
+cookies.json
+ybu_agent.jsonl
+ybu_courses.db
+
+# HTML 文件（调试文件和测试文件）
+*.html

@@ -1,0 +1,13 @@
+playwright>=1.44
+paddleocr>=2.7
+python-dotenv>=1.0
+apscheduler>=3.10
+pandas>=2.2
+opencv-python>=4.10
+rich>=13.7
+requests>=2.31
+beautifulsoup4>=4.12
+pillow>=10.0
+pytest>=7.4
+lxml>=4.9
+pyyaml>=6.0 
