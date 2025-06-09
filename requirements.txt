@@ -12,15 +12,14 @@ pandas>=2.2.0
 pyyaml>=6.0.0
 python-dotenv>=1.0.0
 
-# 深度学习相关（验证码识别模型开发）
-torch>=2.0.0
-torchvision>=0.15.0
-captcha>=0.4
+# 验证码识别相关（ddddocr集成）
+onnxruntime>=1.15.0
+onnx>=1.14.0
 
 # 图像处理
 opencv-python>=4.10.0
 pillow>=10.0.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 
 # UI和日志
 rich>=13.7.0

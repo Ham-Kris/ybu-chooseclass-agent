@@ -769,7 +769,7 @@ class CLIInterfaceAgent:
         
         # 显示验证码识别模式
         if 'captcha_mode' in self.config:
-            mode_display = "手动输入" if self.config['captcha_mode'] == 'manual' else "AI识别（开发中）"
+            mode_display = "手动输入" if self.config['captcha_mode'] == 'manual' else "AI识别（DdddOcr）"
             config_table.add_row("验证码识别", mode_display)
         
         console.print(config_table)

@@ -1,0 +1,8 @@
+onnxruntime
+onnx
+Pillow
+numpy<2.0.0
+opencv-python==3.4.16.59
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+pydantic>=2.0.0
