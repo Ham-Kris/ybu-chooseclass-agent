@@ -116,43 +116,86 @@ class BrowserAgent:
             captcha_selectors = [
                 'img[id*="yzm"], img[src*="yzm"]',  # 包含yzm的图片
                 '#verifyCodeDiv img',               # 验证码弹窗中的图片
+                '#kaptchaImage',                    # 常见的验证码图片ID
                 'img[src*="captcha"]',              # 包含captcha的图片
                 'img[src*="verify"]',               # 包含verify的图片
-                'img[onclick*="refresh"], img[onclick*="change"]'  # 可刷新的验证码图片
+                'img[src*="kaptcha"]',              # 包含kaptcha的图片
+                'img[onclick*="refresh"], img[onclick*="change"]',  # 可刷新的验证码图片
+                'img[alt*="验证码"]',                # alt属性包含验证码的图片
+                'img[title*="验证码"]'               # title属性包含验证码的图片
             ]
             
             captcha_element = None
             found_selector = None
+            found_context = "main"
             
-            # 逐个尝试选择器
+            # 1. 首先检查是否有新弹窗页面
+            try:
+                browser_context = self.page.context
+                pages = browser_context.pages
+                if len(pages) > 1:
+                    # 检查最新的弹窗页面
+                    popup_page = pages[-1]
+                    console.print("🔍 在弹窗页面中查找验证码图片...", style="blue")
+                    
+                    for selector in captcha_selectors:
+                        try:
+                            captcha_element = await popup_page.query_selector(selector)
+                            if captcha_element and await captcha_element.is_visible():
+                                found_selector = selector
+                                found_context = "popup"
+                                console.print(f"✅ 在弹窗页面找到验证码图片：{selector}", style="green")
+                                return await captcha_element.screenshot()
+                        except:
+                            continue
+            except Exception as popup_error:
+                console.print(f"⚠️ 检查弹窗页面验证码失败：{popup_error}", style="yellow")
+            
+            # 2. 在主页面中查找
+            console.print("🔍 在主页面中查找验证码图片...", style="blue")
             for selector in captcha_selectors:
                 try:
                     captcha_element = await self.page.query_selector(selector)
                     if captcha_element and await captcha_element.is_visible():
                         found_selector = selector
-                        console.print(f"✅ 找到验证码图片：{selector}", style="green")
+                        found_context = "main"
+                        console.print(f"✅ 在主页面找到验证码图片：{selector}", style="green")
                         break
                 except:
                     continue
             
-            # 如果在主页面找不到，尝试在iframe中查找
+            # 3. 如果在主页面找不到，尝试在iframe中查找
             if not captcha_element:
                 try:
-                    iframe = await self.page.query_selector('iframe[src*="xsxk_xdxx"], iframe[name="mainFrame"]')
-                    if iframe:
-                        iframe_content = await iframe.content_frame()
-                        if iframe_content:
-                            for selector in captcha_selectors:
-                                try:
-                                    captcha_element = await iframe_content.query_selector(selector)
-                                    if captcha_element and await captcha_element.is_visible():
-                                        console.print(f"✅ 在iframe中找到验证码图片：{selector}", style="green")
-                                        # 使用iframe内容进行截图
-                                        return await captcha_element.screenshot()
-                                except:
-                                    continue
-                except:
-                    pass
+                    console.print("🔍 在iframe中查找验证码图片...", style="blue")
+                    iframe_selectors = [
+                        'iframe[src*="xsxk"]',
+                        'iframe[name="mainFrame"]',
+                        'iframe#mainFrame',
+                        'iframe[src*="verify"]'
+                    ]
+                    
+                    for iframe_selector in iframe_selectors:
+                        try:
+                            iframe = await self.page.query_selector(iframe_selector)
+                            if iframe:
+                                iframe_content = await iframe.content_frame()
+                                if iframe_content:
+                                    for selector in captcha_selectors:
+                                        try:
+                                            captcha_element = await iframe_content.query_selector(selector)
+                                            if captcha_element and await captcha_element.is_visible():
+                                                found_selector = selector
+                                                found_context = "iframe"
+                                                console.print(f"✅ 在iframe中找到验证码图片：{selector}", style="green")
+                                                # 使用iframe内容进行截图
+                                                return await captcha_element.screenshot()
+                                        except:
+                                            continue
+                        except:
+                            continue
+                except Exception as iframe_error:
+                    console.print(f"⚠️ 检查iframe验证码失败：{iframe_error}", style="yellow")
             
             if not captcha_element:
                 console.print("❌ 未找到验证码图片元素", style="red")
@@ -160,7 +203,7 @@ class BrowserAgent:
             
             # 截取验证码图片
             captcha_image = await captcha_element.screenshot()
-            console.print("📸 验证码图片截取成功", style="blue")
+            console.print(f"📸 验证码图片截取成功（来源：{found_context}，选择器：{found_selector}）", style="blue")
             return captcha_image
             
         except Exception as e:
@@ -721,47 +764,92 @@ class BrowserAgent:
                     console.print(f"🎯 点击选课按钮（{js_function}）...", style="blue")
                     await select_link.click()
                     
-                    # 步骤4：处理确认弹窗
-                    try:
-                        # 等待弹窗出现并点击确认
-                        await self.page.wait_for_function("() => window.confirm !== undefined", timeout=3000)
-                        console.print("✅ 确认选课弹窗", style="blue")
-                        # Playwright 会自动处理 confirm 弹窗并返回 true
-                    except Exception as e:
-                        console.print(f"⚠️ 未检测到确认弹窗：{e}", style="yellow")
-                    
                     # 步骤5：等待验证码界面
                     try:
                         # 等待验证码弹窗出现，检查多种可能的位置
                         console.print("⏳ 等待验证码界面...", style="blue")
                         
+                        # 首先等待一下让页面完全加载
+                        await self.page.wait_for_timeout(2000)
+                        
                         # 检查是否有验证码弹窗dialog
                         dialog_found = False
                         iframe_found = False
+                        direct_found = False
                         
+                        # 方法1：检查是否有新窗口弹出（选课验证码通常在新窗口）
                         try:
-                            # 方法1：检查dialog形式的验证码弹窗
-                            await self.page.wait_for_selector('#verifyCodeDiv', timeout=5000)
-                            dialog_visible = await self.page.is_visible('#verifyCodeDiv')
-                            if dialog_visible:
-                                console.print("📝 找到验证码Dialog弹窗", style="blue")
-                                dialog_found = True
-                        except:
-                            pass
+                            # 等待可能的新弹窗页面
+                            new_page = None
+                            browser_context = self.page.context
+                            
+                            # 设置超时等待新页面
+                            console.print("🔍 检查是否有验证码弹窗页面...", style="blue")
+                            await self.page.wait_for_timeout(3000)  # 等待弹窗出现
+                            
+                            pages = browser_context.pages
+                            if len(pages) > 1:
+                                new_page = pages[-1]  # 获取最新的页面
+                                console.print("📝 找到验证码弹窗页面", style="blue")
+                                
+                                # 等待验证码页面完全加载
+                                await new_page.wait_for_load_state("networkidle")
+                                
+                                # 查找验证码元素
+                                verify_input = await new_page.query_selector('input[name="verifyCode"], #verifyCode')
+                                if verify_input:
+                                    console.print("✅ 在弹窗页面中找到验证码输入框", style="green")
+                                    dialog_found = True
+                                    # 使用弹窗页面进行验证码处理
+                                    working_page = new_page
+                                else:
+                                    console.print("⚠️ 弹窗页面中未找到验证码输入框", style="yellow")
+                        except Exception as popup_error:
+                            console.print(f"⚠️ 检查弹窗页面失败：{popup_error}", style="yellow")
                         
                         if not dialog_found:
                             try:
-                                # 方法2：检查iframe内的验证码
-                                await self.page.wait_for_selector('iframe[src*="xsxk_xdxx"]', timeout=5000)
-                                console.print("📝 找到验证码iframe", style="blue")
-                                iframe_found = True
+                                # 方法2：检查主页面中的dialog形式验证码
+                                await self.page.wait_for_selector('#verifyCodeDiv, .verifyCodeDiv, [id*="verify"]', timeout=5000)
+                                verify_div = await self.page.query_selector('#verifyCodeDiv, .verifyCodeDiv, [id*="verify"]')
+                                if verify_div and await verify_div.is_visible():
+                                    console.print("📝 找到验证码Dialog弹窗", style="blue")
+                                    dialog_found = True
+                                    working_page = self.page
+                            except:
+                                pass
+                        
+                        if not dialog_found:
+                            try:
+                                # 方法3：检查iframe内的验证码
+                                iframe_selector = 'iframe[src*="xsxk"], iframe[name="mainFrame"], iframe#mainFrame'
+                                await self.page.wait_for_selector(iframe_selector, timeout=5000)
+                                iframe = await self.page.query_selector(iframe_selector)
+                                if iframe:
+                                    iframe_content = await iframe.content_frame()
+                                    if iframe_content:
+                                        verify_input = await iframe_content.query_selector('input[name="verifyCode"], #verifyCode')
+                                        if verify_input:
+                                            console.print("📝 在iframe中找到验证码", style="blue")
+                                            iframe_found = True
+                                            working_page = iframe_content
                             except:
                                 pass
                         
                         if not dialog_found and not iframe_found:
-                            # 方法3：直接查找验证码输入框
-                            await self.page.wait_for_selector('input[name="verifyCode"], #verifyCode', timeout=5000)
-                            console.print("📝 找到验证码输入框", style="blue")
+                            # 方法4：直接在主页面查找验证码输入框
+                            try:
+                                await self.page.wait_for_selector('input[name="verifyCode"], #verifyCode, input[placeholder*="验证码"]', timeout=5000)
+                                console.print("📝 在主页面找到验证码输入框", style="blue")
+                                direct_found = True
+                                working_page = self.page
+                            except:
+                                console.print("❌ 未找到任何验证码输入界面", style="red")
+                                return False
+                        
+                        # 确定工作页面
+                        if not 'working_page' in locals():
+                            working_page = self.page
                         
                         # 先刷新验证码图片，确保获取最新的验证码
                         console.print("🔄 刷新验证码图片...", style="blue")
@@ -772,14 +860,17 @@ class BrowserAgent:
                                 '#verifyCodeDiv img',
                                 'img[src*="kaptcha"]',
                                 'img[src*="captcha"]',
+                                'img[src*="verify"]',
                                 'img[onclick*="refresh"]',
-                                'img[onclick*="change"]'
+                                'img[onclick*="change"]',
+                                'img[alt*="验证码"]',
+                                'img[title*="验证码"]'
                             ]
                             
                             captcha_refreshed = False
                             for selector in captcha_img_selectors:
                                 try:
-                                    captcha_img = await self.page.query_selector(selector)
+                                    captcha_img = await working_page.query_selector(selector)
                                     if captcha_img and await captcha_img.is_visible():
                                         console.print(f"🎯 点击刷新验证码：{selector}", style="blue")
                                         await captcha_img.click()
@@ -790,7 +881,7 @@ class BrowserAgent:
                             
                             if captcha_refreshed:
                                 # 等待验证码刷新完成
-                                await self.page.wait_for_timeout(1000)
+                                await working_page.wait_for_timeout(1500)
                                 console.print("✅ 验证码已刷新", style="green")
                             else:
                                 console.print("⚠️ 未找到可刷新的验证码图片，使用当前验证码", style="yellow")
@@ -800,6 +891,29 @@ class BrowserAgent:
                         
                         # 获取验证码图片
                         captcha_image = await self.get_captcha_image()
+                        if not captcha_image:
+                            # 如果主页面没有验证码图片，尝试从工作页面获取
+                            if working_page != self.page:
+                                try:
+                                    captcha_selectors = [
+                                        'img[src*="kaptcha"]',
+                                        'img[src*="captcha"]',
+                                        'img[src*="verify"]',
+                                        'img[alt*="验证码"]'
+                                    ]
+                                    
+                                    for selector in captcha_selectors:
+                                        try:
+                                            captcha_element = await working_page.query_selector(selector)
+                                            if captcha_element and await captcha_element.is_visible():
+                                                captcha_image = await captcha_element.screenshot()
+                                                console.print(f"📸 从工作页面获取验证码图片：{selector}", style="blue")
+                                                break
+                                        except:
+                                            continue
+                                except Exception as img_error:
+                                    console.print(f"❌ 从工作页面获取验证码图片失败：{img_error}", style="red")
+                        
                         if not captcha_image:
                             console.print("❌ 无法获取验证码图片", style="red")
                             return False
@@ -816,177 +930,326 @@ class BrowserAgent:
                         console.print(f"🔤 验证码：{captcha_code}", style="blue")
                         
                         # 步骤6：输入验证码并提交
-                        if dialog_found:
-                            # Dialog形式 - 直接操作
-                            await self.page.fill('#verifyCode', captcha_code)
-                            
-                            # 等待输入被保存
-                            await self.page.wait_for_timeout(500)
-                            
-                            # 验证输入是否被正确保存
-                            saved_code = await self.page.evaluate("document.getElementById('verifyCode').value")
-                            console.print(f"📝 验证码输入已保存：{saved_code}", style="blue")
-                            
-                            # 在提交前，确保隐藏字段被正确设置
-                            console.print("🔧 检查验证码提交所需的隐藏字段...", style="blue")
+                        console.print("📝 输入验证码...", style="blue")
+                        
+                        # 查找验证码输入框的多种可能选择器
+                        verify_input_selectors = [
+                            'input[name="verifyCode"]',
+                            '#verifyCode',
+                            'input[placeholder*="验证码"]',
+                            'input[type="text"][maxlength="5"]',
+                            'input[type="text"][maxlength="4"]'
+                        ]
+                        
+                        input_filled = False
+                        for selector in verify_input_selectors:
+                            try:
+                                verify_input = await working_page.query_selector(selector)
+                                if verify_input and await verify_input.is_visible():
+                                    await verify_input.fill(captcha_code)
+                                    console.print(f"✅ 验证码已输入到：{selector}", style="green")
+                                    input_filled = True
+                                    break
+                            except:
+                                continue
+                        
+                        if not input_filled:
+                            console.print("❌ 无法找到验证码输入框", style="red")
+                            return False
+                        
+                        # 等待输入被保存
+                        await working_page.wait_for_timeout(500)
+                        
+                        # 如果是弹窗页面，需要设置隐藏字段
+                        if dialog_found and working_page != self.page:
+                            console.print("🔧 在弹窗页面设置选课参数...", style="blue")
                             try:
                                 # 获取当前选择的教学班信息
                                 current_jx0404id = selected_jx0404id
                                 current_kcid = best_class.get('kcid', course_id) if best_class else course_id
                                 
-                                # 检查并设置隐藏字段
-                                await self.page.evaluate(f"""
-                                    // 设置验证码选课所需的隐藏字段
-                                    document.getElementById('yzmxkJx0404id').value = '{current_jx0404id}';
-                                    document.getElementById('yzmxkXkzy').value = '';  // 选课志愿，通常为空
-                                    document.getElementById('yzmxkTrjf').value = '';  // 投入积分，通常为空
-                                    document.getElementById('yzmxkKcid').value = '{current_kcid}';
-                                    document.getElementById('yzmxkCfbs').value = 'null';  // 重复标识
+                                # 在弹窗页面设置隐藏字段
+                                await working_page.evaluate(f"""
+                                    try {{
+                                        // 查找或创建隐藏字段
+                                        let form = document.querySelector('form') || document.body;
+                                        
+                                        // 设置或创建 jx0404id 字段
+                                        let jx0404idInput = document.querySelector('input[name="jx0404id"]') || 
+                                                           document.getElementById('yzmxkJx0404id');
+                                        if (!jx0404idInput) {{
+                                            jx0404idInput = document.createElement('input');
+                                            jx0404idInput.type = 'hidden';
+                                            jx0404idInput.name = 'jx0404id';
+                                            form.appendChild(jx0404idInput);
+                                        }}
+                                        jx0404idInput.value = '{current_jx0404id}';
+                                        
+                                        // 设置或创建 kcid 字段
+                                        let kcidInput = document.querySelector('input[name="kcid"]') || 
+                                                       document.getElementById('yzmxkKcid');
+                                        if (!kcidInput) {{
+                                            kcidInput = document.createElement('input');
+                                            kcidInput.type = 'hidden';
+                                            kcidInput.name = 'kcid';
+                                            form.appendChild(kcidInput);
+                                        }}
+                                        kcidInput.value = '{current_kcid}';
+                                        
+                                        // 设置其他必要字段
+                                        ['xkzy', 'trjf', 'cfbs'].forEach(name => {{
+                                            let input = document.querySelector(`input[name="${{name}}"]`);
+                                            if (!input) {{
+                                                input = document.createElement('input');
+                                                input.type = 'hidden';
+                                                input.name = name;
+                                                form.appendChild(input);
+                                            }}
+                                            input.value = name === 'cfbs' ? 'null' : '';
+                                        }});
+                                        
+                                        console.log('隐藏字段已设置');
+                                    }} catch(e) {{
+                                        console.error('设置隐藏字段失败:', e);
+                                    }}
                                 """)
                                 
-                                # 验证隐藏字段是否设置成功
-                                jx0404id_value = await self.page.evaluate("document.getElementById('yzmxkJx0404id').value")
-                                kcid_value = await self.page.evaluate("document.getElementById('yzmxkKcid').value")
-                                console.print(f"✅ 隐藏字段设置完成 - jx0404id: {jx0404id_value}, kcid: {kcid_value}", style="green")
+                                console.print("✅ 弹窗页面参数设置完成", style="green")
                                 
                             except Exception as field_error:
-                                console.print(f"⚠️ 设置隐藏字段时出错：{field_error}，继续提交", style="yellow")
-                            
-                            # 设置alert监听器来捕获JavaScript alert信息
-                            alert_messages = []
-                            
-                            def handle_dialog(dialog):
-                                alert_messages.append(dialog.message)
-                                console.print(f"🚨 捕获到alert消息：{dialog.message}", style="yellow")
-                                dialog.accept()
-                            
-                            self.page.on('dialog', handle_dialog)
-                            
-                            # 查找提交按钮 - 支持多种形式
-                            submit_selectors = [
-                                '#changeVerifyCode',
-                                'a[name="changeVerifyCode"]',
-                                'a[onclick*="changeVerifyCode"]',
-                                '#verifyCodeDiv input[type="submit"]',
-                                '#verifyCodeDiv button[type="submit"]'
-                            ]
-                            
-                            submit_clicked = False
-                            for selector in submit_selectors:
-                                try:
-                                    submit_btn = await self.page.query_selector(selector)
-                                    if submit_btn and await submit_btn.is_visible():
-                                        console.print(f"🎯 点击提交按钮：{selector}", style="blue")
-                                        await submit_btn.click()
-                                        submit_clicked = True
-                                        break
-                                except:
-                                    continue
-                            
-                            if not submit_clicked:
-                                console.print("⚠️ 未找到提交按钮，尝试直接调用JavaScript函数", style="yellow")
-                                await self.page.evaluate("if(typeof changeVerifyCode === 'function') changeVerifyCode();")
-                            
-                            # 等待AJAX请求完成
-                            await self.page.wait_for_timeout(2000)
-                            
-                            # 如果有alert消息，显示它们
-                            if alert_messages:
-                                for msg in alert_messages:
-                                    console.print(f"📢 服务器消息：{msg}", style="cyan")
-                        elif iframe_found:
-                            # iframe形式 - 需要切换到iframe内部
-                            iframe = await self.page.query_selector('iframe[src*="xsxk_xdxx"]')
-                            if iframe:
-                                iframe_content = await iframe.content_frame()
-                                if iframe_content:
-                                    await iframe_content.fill('input[name="verifyCode"], #verifyCode', captcha_code)
-                                    
-                                    # 在iframe内查找提交按钮
-                                    submit_selectors = ['#changeVerifyCode', 'a[name="changeVerifyCode"]', 'input[type="submit"]']
-                                    for selector in submit_selectors:
-                                        try:
-                                            submit_btn = await iframe_content.query_selector(selector)
-                                            if submit_btn:
-                                                await submit_btn.click()
-                                                break
-                                        except:
-                                            continue
-                        else:
-                            # 直接形式
-                            input_selectors = ['#verifyCode', 'input[name="verifyCode"]']
-                            for selector in input_selectors:
-                                try:
-                                    input_elem = await self.page.query_selector(selector)
-                                    if input_elem:
-                                        await input_elem.fill(captcha_code)
-                                        break
-                                except:
-                                    continue
-                            
-                            # 尝试提交
-                            await self.page.keyboard.press('Enter')
+                                console.print(f"⚠️ 设置弹窗参数时出错：{field_error}，继续提交", style="yellow")
+                        
+                        # 设置alert监听器来捕获JavaScript alert信息
+                        alert_messages = []
+                        
+                        def handle_dialog(dialog):
+                            alert_messages.append(dialog.message)
+                            console.print(f"🚨 捕获到alert消息：{dialog.message}", style="yellow")
+                            dialog.accept()
+                        
+                        working_page.on('dialog', handle_dialog)
+                        
+                        # 查找提交按钮 - 支持多种形式
+                        submit_selectors = [
+                            'input[type="submit"]',
+                            'button[type="submit"]',
+                            '#changeVerifyCode',
+                            'a[name="changeVerifyCode"]',
+                            'a[onclick*="changeVerifyCode"]',
+                            'a[onclick*="submit"]',
+                            'button[onclick*="submit"]',
+                            'input[value*="确定"]',
+                            'input[value*="提交"]',
+                            'button:contains("确定")',
+                            'button:contains("提交")'
+                        ]
+                        
+                        submit_clicked = False
+                        for selector in submit_selectors:
+                            try:
+                                submit_btn = await working_page.query_selector(selector)
+                                if submit_btn and await submit_btn.is_visible():
+                                    console.print(f"🎯 点击提交按钮：{selector}", style="blue")
+                                    await submit_btn.click()
+                                    submit_clicked = True
+                                    break
+                            except:
+                                continue
+                        
+                        if not submit_clicked:
+                            # 尝试按回车键提交
+                            console.print("⚠️ 未找到提交按钮，尝试按回车键提交", style="yellow")
+                            try:
+                                verify_input = await working_page.query_selector('input[name="verifyCode"], #verifyCode')
+                                if verify_input:
+                                    await verify_input.press('Enter')
+                                    submit_clicked = True
+                            except:
+                                pass
+                        
+                        if not submit_clicked:
+                            console.print("⚠️ 尝试直接调用JavaScript提交函数", style="yellow")
+                            try:
+                                # 尝试调用常见的提交函数
+                                await working_page.evaluate("""
+                                    if(typeof changeVerifyCode === 'function') {
+                                        changeVerifyCode();
+                                    } else if(typeof submitForm === 'function') {
+                                        submitForm();
+                                    } else {
+                                        // 查找表单并提交
+                                        const form = document.querySelector('form');
+                                        if(form) form.submit();
+                                    }
+                                """)
+                                submit_clicked = True
+                            except Exception as js_error:
+                                console.print(f"❌ JavaScript提交失败：{js_error}", style="red")
+                        
+                        if not submit_clicked:
+                            console.print("❌ 无法提交验证码", style="red")
+                            return False
                         
                         # 等待提交结果
-                        await self.page.wait_for_load_state("networkidle", timeout=10000)
+                        console.print("⏳ 等待提交结果...", style="blue")
+                        await working_page.wait_for_timeout(3000)
                         
-                        # 检查选课结果
-                        final_content = await self.page.content()
+                        # 等待页面响应
+                        try:
+                            await working_page.wait_for_load_state("networkidle", timeout=10000)
+                        except:
+                            console.print("⚠️ 页面加载超时，继续检查结果", style="yellow")
+                        
+                        # 检查选课结果 - 从工作页面获取内容
+                        final_content = await working_page.content()
+                        
+                        # 如果工作页面是弹窗，也检查主页面的内容
+                        if working_page != self.page:
+                            try:
+                                main_content = await self.page.content()
+                                final_content = final_content + "\n" + main_content
+                            except:
+                                pass
                         
                         # 保存最终页面内容用于调试
                         with open('debug_final_page.html', 'w', encoding='utf-8') as f:
                             f.write(final_content)
                         
-                        # 尝试从页面中提取alert或错误信息
-                        try:
-                            # 检查是否有JavaScript alert
-                            alert_text = await self.page.evaluate("""
-                                () => {
-                                    // 查找页面中的错误信息
-                                    const alertElements = document.querySelectorAll('div[class*="alert"], .error-message, .message');
-                                    if (alertElements.length > 0) {
-                                        return Array.from(alertElements).map(el => el.textContent.trim()).join('; ');
-                                    }
-                                    return '';
-                                }
-                            """)
-                            if alert_text:
-                                console.print(f"📝 页面错误信息：{alert_text}", style="yellow")
-                        except:
-                            pass
+                        # 如果有alert消息，优先显示和处理
+                        if alert_messages:
+                            for msg in alert_messages:
+                                console.print(f"📢 服务器消息：{msg}", style="cyan")
+                                # 检查alert消息中的成功指示
+                                if any(keyword in msg for keyword in ["成功", "已选", "选课成功"]):
+                                    console.print("🎉 从alert消息确认选课成功！", style="green")
+                                    return True
+                                elif any(keyword in msg for keyword in ["失败", "错误", "验证码", "已满"]):
+                                    console.print("❌ 从alert消息确认选课失败", style="red")
+                                    return False
                         
-                        if "成功" in final_content or "已选" in final_content:
-                            console.print("🎉 选课成功！", style="green")
+                        # 如果没有alert消息，分析页面内容
+                        console.print("🔍 分析页面内容判断选课结果...", style="blue")
+                        
+                        # 检查选课结果的关键词
+                        success_keywords = ["成功", "已选", "选课成功", "添加成功"]
+                        error_keywords = ["失败", "错误", "验证码", "已满", "时间", "冲突", "重复"]
+                        
+                        # 先检查明显的成功指示
+                        if any(keyword in final_content for keyword in success_keywords):
+                            console.print("🎉 从页面内容确认选课成功！", style="green")
                             return True
-                        elif "验证码" in final_content and ("错误" in final_content or "过期" in final_content):
-                            console.print("❌ 验证码错误或过期", style="red")
-                            # 提取更具体的错误信息
+                        
+                        # 检查明显的失败指示
+                        if any(keyword in final_content for keyword in error_keywords):
+                            console.print("❌ 从页面内容确认选课失败", style="red")
+                            
+                            # 尝试提取具体错误信息
+                            try:
+                                from bs4 import BeautifulSoup
+                                soup = BeautifulSoup(final_content, 'html.parser')
+                                
+                                # 查找包含错误信息的script标签
+                                for script in soup.find_all('script'):
+                                    if script.string:
+                                        for error_word in error_keywords:
+                                            if error_word in script.string:
+                                                # 提取alert或其他错误信息
+                                                import re
+                                                alert_match = re.search(r'alert\s*\(\s*["\']([^"\']+)["\']', script.string)
+                                                if alert_match:
+                                                    error_msg = alert_match.group(1)
+                                                    console.print(f"📝 具体错误信息：{error_msg}", style="yellow")
+                                                    break
+                                
+                                # 查找页面中的错误消息元素
+                                error_elements = soup.find_all(['div', 'span', 'p'], 
+                                    class_=lambda x: x and any(word in x.lower() for word in ['error', 'alert', 'message', 'warning']))
+                                
+                                for elem in error_elements:
+                                    if elem.get_text().strip():
+                                        console.print(f"📝 页面错误元素：{elem.get_text().strip()[:100]}", style="yellow")
+                                        break
+                                        
+                            except Exception as parse_error:
+                                console.print(f"⚠️ 解析错误信息失败：{parse_error}", style="yellow")
+                            
+                            return False
+                        
+                        # 如果没有明确的成功或失败指示，进行更深入的检查
+                        console.print("⚠️ 无法从页面内容明确判断选课结果，进行深入检查", style="yellow")
+                        
+                        try:
                             from bs4 import BeautifulSoup
                             soup = BeautifulSoup(final_content, 'html.parser')
                             
-                            # 查找包含验证码错误的文本
-                            for script in soup.find_all('script'):
-                                if script.string and '验证码' in script.string:
-                                    console.print(f"📝 验证码错误详情：{script.string[:200]}...", style="yellow")
-                                    break
+                            # 检查页面标题
+                            title = soup.find('title')
+                            if title:
+                                title_text = title.get_text().strip()
+                                console.print(f"📖 页面标题：{title_text}", style="blue")
+                                
+                                if any(keyword in title_text for keyword in success_keywords):
+                                    console.print("🎉 从页面标题确认选课成功！", style="green")
+                                    return True
+                                elif any(keyword in title_text for keyword in error_keywords):
+                                    console.print("❌ 从页面标题确认选课失败", style="red")
+                                    return False
                             
-                            return False
-                        else:
-                            console.print("❌ 选课失败或状态未知", style="red")
-                            console.print(f"💾 完整页面内容已保存到 debug_final_page.html", style="blue")
+                            # 检查是否返回到选课主页面
+                            if "选课" in final_content and "课程列表" in final_content:
+                                console.print("🔄 页面返回到选课主界面，可能需要重新检查课程状态", style="yellow")
+                                
+                                # 尝试重新获取课程信息来确认选课状态
+                                try:
+                                    updated_courses = await self.fetch_courses()
+                                    
+                                    # 检查目标课程是否已被选中
+                                    if updated_courses and 'selected_courses' in updated_courses:
+                                        selected_course_ids = [course.get('kcid') for course in updated_courses['selected_courses']]
+                                        if course_id in selected_course_ids:
+                                            console.print("🎉 确认课程已在已选课程列表中！", style="green")
+                                            return True
+                                        else:
+                                            console.print("❌ 课程未在已选课程列表中", style="red")
+                                            return False
+                                            
+                                except Exception as fetch_error:
+                                    console.print(f"⚠️ 重新获取课程信息失败：{fetch_error}", style="yellow")
                             
-                            # 查找可能的错误信息
-                            from bs4 import BeautifulSoup
-                            soup = BeautifulSoup(final_content, 'html.parser')
+                            # 检查是否有JavaScript重定向或其他指示
+                            scripts = soup.find_all('script')
+                            for script in scripts:
+                                if script.string:
+                                    script_content = script.string.strip()
+                                    
+                                    # 检查是否有重定向
+                                    if 'location.href' in script_content or 'window.location' in script_content:
+                                        console.print("🔄 检测到页面重定向", style="blue")
+                                        
+                                        # 等待重定向完成
+                                        await working_page.wait_for_timeout(2000)
+                                        
+                                        # 获取重定向后的页面内容
+                                        redirected_content = await working_page.content()
+                                        
+                                        # 再次检查成功/失败关键词
+                                        if any(keyword in redirected_content for keyword in success_keywords):
+                                            console.print("🎉 重定向后确认选课成功！", style="green")
+                                            return True
+                                        elif any(keyword in redirected_content for keyword in error_keywords):
+                                            console.print("❌ 重定向后确认选课失败", style="red")
+                                            return False
                             
-                            # 查找alert内容
-                            for script in soup.find_all('script'):
-                                if script.string and 'alert' in script.string:
-                                    console.print(f"📝 可能的错误信息：{script.string[:200]}...", style="yellow")
-                                    break
-                            
-                            console.print(f"页面内容片段：{final_content[:200]}...", style="yellow")
-                            return False
+                        except Exception as deep_check_error:
+                            console.print(f"⚠️ 深入检查失败：{deep_check_error}", style="yellow")
+                        
+                        # 最终保存调试信息
+                        console.print(f"💾 完整页面内容已保存到 debug_final_page.html", style="blue")
+                        console.print(f"📄 页面内容片段：{final_content[:300]}...", style="dim")
+                        
+                        # 如果所有检查都无法确定结果，返回未知状态
+                        console.print("❓ 无法确定选课结果，建议手动检查", style="yellow")
+                        return False
                         
                     except Exception as e:
                         console.print(f"❌ 验证码处理失败：{e}", style="red")

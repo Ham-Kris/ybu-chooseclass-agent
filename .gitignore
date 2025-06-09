@@ -23,3 +23,7 @@ ybu_courses.db
 
 # HTML 文件（调试文件和测试文件）
 *.html
+
+# 学生选课网页源代码测试文件夹（用于开发）
+miscellaneous/学生选课_files
+miscellaneous/学生选课1_files
