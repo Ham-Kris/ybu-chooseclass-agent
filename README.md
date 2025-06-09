@@ -38,10 +38,10 @@
 git clone https://github.com/Ham-Kris/ybu-chooseclass-agent.git
 cd ybu-chooseclass-agent
 
-# 使用一键启动脚本（自动处理环境配置）
+# 使用完整交互式启动脚本（推荐，持续使用）
 start_windows.bat
 
-# 或者使用快速启动脚本（避免命令行问题）
+# 或者使用快速启动脚本（单次操作）
 quick_start.bat
 
 # 或者手动安装
@@ -89,7 +89,7 @@ YBU_PASS=********      # 密码
 HEADLESS=true          # 无头模式
 
 # 验证码识别设置（开发中）
-# CAPTCHA_MODEL=manual    # 验证码识别模式，目前仅支持手动输入
+CAPTCHA_MODEL=manual    # 验证码识别模式，目前仅支持手动输入
 # CAPTCHA_MODEL=ai        # AI模型识别（开发中，暂不可用）
 ```
 
@@ -201,7 +201,7 @@ python3 main.py auto-select-all --skip-retakes --delay 2
 | 参数 | 说明 | 示例 |
 |------|------|------|
 | `--dry-run` | 模拟运行，不实际选课 | `--dry-run` |
-| `--max-courses` | 最大选课数量（默认5门） | `--max-courses 3` |
+| `--max-courses` | 最大选课数量（默认无限制） | `--max-courses 3` |
 | `--course-type` | 课程类型筛选 | `--course-type professional` |
 | `--priority-keywords` | 优先选择包含关键词的课程 | `--priority-keywords 计算机 数学` |
 | `--exclude-keywords` | 排除包含关键词的课程 | `--exclude-keywords 体育 实验` |
@@ -269,7 +269,7 @@ python3 main.py scheduler stop
 - **性能优化阶段**：持续优化模型准确率和推理速度
 
 **验证码特征分析：**
-- 5位大写字母数字组合
+- 5位大小写字母数字组合
 - 鱼眼扭曲效果
 - 中央红色竖线干扰
 - 随机噪点和模糊效果
@@ -284,13 +284,13 @@ python3 main.py scheduler stop
 
 1. **数据收集阶段**
    - 从YBU教务系统爬取真实验证码样本
-   - 遵守访问频率限制（QPS ≤ 3，遵守学校ToS）
+   - 批量并发爬取
    - 收集≥5000张真实验证码图片
    - 人工标注建立高质量训练数据集
 
 2. **数据增强阶段**
-   - 对收集的验证码进行数据增强
-   - 应用旋转、缩放、噪声等变换增加数据多样性
+   - 对收集的验证码进行灰度处理
+   - 应用噪声等变换增加数据多样性
    - 合成额外的训练样本以平衡数据分布
 
 3. **模型训练阶段**
@@ -506,19 +506,32 @@ A:
 2. 使用国内镜像：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
 3. Windows 用户可以使用 `start_windows.bat` 自动处理
 
+### Q: Windows启动脚本如何选择？
+A: 提供两种启动方式：
+
+**1. `start_windows.bat` - 完整交互式控制台（推荐）**
+- 提供持续的交互式命令环境
+- 执行完一个命令后可以继续输入下一个命令
+- 内置帮助系统，输入 `help` 查看所有命令
+- 适合需要连续操作的用户
+
+**2. `quick_start.bat` - 快速单次操作**
+- 提供简洁的菜单选择界面
+- 执行完一个操作后自动退出
+- 适合只需要执行单个操作的用户
+
+**3. 直接命令行调用**
+```cmd
+# 可以为脚本传递参数直接执行
+start_windows.bat login
+quick_start.bat auto-select-all
+```
+
 ### Q: 启动脚本提示 "invalid choice: '!command!'" 怎么办？
-A: 这是Windows批处理脚本的变量扩展问题，提供以下解决方案：
-1. **方案一**：使用快速启动脚本 `quick_start.bat`
-2. **方案二**：直接在命令行运行：
-   ```cmd
-   # 激活虚拟环境
-   venv\Scripts\activate
-   
-   # 直接运行命令
-   python main.py login
-   python main.py auto-select-all
-   ```
-3. **方案三**：使用修复后的启动脚本（已添加 `setlocal enabledelayedexpansion`）
+A: 这个问题已经修复，新版本脚本添加了 `setlocal enabledelayedexpansion` 解决变量扩展问题：
+1. **推荐方案**：使用最新的 `start_windows.bat`（已修复）
+2. **备选方案**：使用 `quick_start.bat` 菜单模式
+3. **直接调用**：`start_windows.bat 命令参数`
 
 ### Q: 选课时提示验证码错误或选课失败怎么办？
 A: 已针对实际选课页面结构进行了优化：
@@ -608,7 +621,3 @@ MIT License - 本项目仅供学习研究使用，不得用于商业用途。
 - 感谢深度学习社区为验证码识别模型开发提供的技术支持
 - 感谢 Playwright 项目提供的浏览器自动化框架
 - 感谢所有贡献者的支持和建议
-
----
-
-**🎓 延边大学自动选课代理系统 - 让选课变得更智能！** 

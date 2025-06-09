@@ -73,21 +73,94 @@ echo 更多命令请参考 README.md
 echo ====================================
 echo.
 
-REM 如果提供了命令行参数，直接运行
-if "%1"=="" (
-    echo 请输入要执行的命令（不含 python main.py）：
-    echo 示例: login, list, auto-select-all
-    echo 留空直接按回车将退出脚本
-    set /p command="命令: "
-    if not "!command!"=="" (
-        echo 执行: python main.py !command!
-        python main.py !command!
-    ) else (
-        echo 未输入命令，退出脚本
-    )
-) else (
+REM 如果提供了命令行参数，直接运行后退出
+if not "%1"=="" (
     echo 执行: python main.py %*
     python main.py %*
+    pause
+    exit /b 0
 )
 
-pause 
+REM 进入交互式命令循环
+:main_loop
+echo.
+echo ====================================
+echo 🚀 YBU 自动选课系统 - 交互式控制台
+echo ====================================
+echo.
+echo 常用命令：
+echo   1. login              - 登录系统
+echo   2. login -u 学号 -p "密码"  - 自定义账号登录  
+echo   3. list               - 查看课程列表
+echo   4. auto-select-all    - 智能自动选课
+echo   5. status             - 查看系统状态
+echo   6. clean              - 清理旧数据
+echo   7. help               - 查看所有命令
+echo   8. exit               - 退出程序
+echo.
+set /p command="请输入命令（不含 python main.py）: "
+
+REM 处理退出命令
+if /i "!command!"=="exit" (
+    echo 感谢使用 YBU 自动选课系统！
+    pause
+    exit /b 0
+)
+
+REM 处理帮助命令
+if /i "!command!"=="help" (
+    echo.
+    echo 📖 完整命令列表：
+    echo.
+    echo 🔐 登录相关：
+    echo   login                    - 从配置文件登录
+    echo   login -u 学号 -p "密码"    - 自定义账号登录（推荐）
+    echo   login --clean            - 清理后登录
+    echo.
+    echo 📚 课程管理：  
+    echo   list                     - 查看课程列表
+    echo   list --refresh           - 刷新课程数据
+    echo   list --type professional - 只看专业课程
+    echo.
+    echo 🎯 自动选课：
+    echo   auto-select-all          - 智能自动选课
+    echo   auto-select-all --dry-run - 模拟运行测试
+    echo   auto-select-all --max-courses 3 --course-type professional
+    echo.
+    echo 🛠️ 系统管理：
+    echo   status                   - 查看系统状态
+    echo   clean                    - 清理旧数据
+    echo   clean --all              - 清理所有数据
+    echo.
+    echo 更多详细用法请查看 README.md
+    echo.
+    goto main_loop
+)
+
+REM 处理空命令
+if "!command!"=="" (
+    echo 请输入有效命令，输入 help 查看帮助，输入 exit 退出
+    goto main_loop
+)
+
+REM 执行命令
+echo.
+echo ⚡ 执行: python main.py !command!
+echo.
+python main.py !command!
+
+REM 显示执行结果并询问是否继续
+echo.
+echo ====================================
+echo 命令执行完毕
+echo ====================================
+echo.
+set /p continue="按回车继续操作，输入 exit 退出: "
+if /i "!continue!"=="exit" (
+    echo 感谢使用 YBU 自动选课系统！
+    pause
+    exit /b 0
+)
+
+REM 回到主循环
+goto main_loop 

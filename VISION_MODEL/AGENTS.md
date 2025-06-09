@@ -21,12 +21,12 @@
 | Field       | Value                                                                                            |
 | ----------- | ------------------------------------------------------------------------------------------------ |
 | **role**    | `crawler`                                                                                        |
-| **goal**    | 从YBU教务系统爬取真实验证码图片并进行标注，建立高质量训练数据集                                            |
-| **inputs**  | YBU教务系统验证码接口，爬取参数配置                                                                    |
+| **goal**    | 从YBU教务系统爬取真实验证码图片并进行标注, 并进行灰度处理, 建立高质量训练数据集                                            |
+| **inputs**  | YBU教务系统验证码接口, 爬取参数配置                                                                   |
 | **tools**   | `requests`, `Playwright`, `Pillow`, `OpenCV-Python`                                              |
 | **outputs** | `dataset/real/*.jpg`, `real_labels.txt`                                                          |
-| **success** | ≥5000张真实验证码样本，完整人工标注                                                                  |
-| **ethics**  | 遵守学校ToS，QPS ≤ 3，记录所有请求，仅用于学术研究                                                    |
+| **success** | ≥5000张真实验证码样本, 完整人工标注                                                                   |
+| **ethics**  | 批量并发快速爬取                                                                                    |
 
 **System Prompt**
 
@@ -48,10 +48,10 @@ Environment variables
 | Field       | Value                                                           |
 | ----------- | --------------------------------------------------------------- |
 | **role**    | `labeler`                                                       |
-| **goal**    | 为爬取的验证码图片提供人工标注，确保标注质量                             |
+| **goal**    | 为爬取的验证码图片提供人工标注, 确保标注质量                           |
 | **inputs**  | `dataset/real/*.jpg`                                            |
-| **outputs** | `real_labels.txt`, 高质量标注数据                                  |
-| **success** | 所有图片完成人工标注，标注准确率≥99%                                   |
+| **outputs** | `real_labels.txt`, 高质量标注数据                                 |
+| **success** | 所有图片完成人工标注, 标注准确率≥99%                                 |
 
 ---
 
@@ -60,7 +60,7 @@ Environment variables
 | Field       | Value                                                                                      |
 | ----------- | ------------------------------------------------------------------------------------------ |
 | **role**    | `trainer`                                                                                  |
-| **goal**    | 基于真实验证码数据集训练CRNN‑CTC模型，验证集准确率≥98%                                           |
+| **goal**    | 基于真实验证码数据集训练CRNN‑CTC模型, 验证集准确率≥98%                                            |
 | **inputs**  | `dataset/real/*`, `hyperparams.yaml`                                                       |
 | **outputs** | `models/best.pt`, `metrics.json`                                                           |
 | **tools**   | PyTorch, torchmetrics, (optional) Weights & Biases                                         |
@@ -114,7 +114,6 @@ flowchart TD
 
 ## Security & Compliance
 
-* 爬虫操作严格遵守学校服务条款和访问频率限制
 * 在`.secrets/`中存储cookies/tokens，排除版本控制
 * 发布前清除数据集中的任何用户识别信息
 * 所有数据仅用于学术研究，禁止商业用途
