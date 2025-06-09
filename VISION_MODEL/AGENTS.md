@@ -2,7 +2,7 @@
 
 ## Objective
 
-从YBU教务系统爬取≥1000张真实验证码样本，训练视觉模型返回`{ "captcha": "AB1cD" }`，并提供简单的预测接口。
+从YBU教务系统爬取≥5000张真实验证码样本，训练视觉模型返回`{ "captcha": "AB1cD" }`，并提供简单的预测接口。
 
 ## Global Context
 
@@ -25,7 +25,7 @@
 | **inputs**  | YBU教务系统验证码接口，爬取参数配置                                                                    |
 | **tools**   | `requests`, `Playwright`, `Pillow`, `OpenCV-Python`                                              |
 | **outputs** | `dataset/real/*.jpg`, `real_labels.txt`                                                          |
-| **success** | ≥1000张真实验证码样本，完整人工标注                                                                  |
+| **success** | ≥5000张真实验证码样本，完整人工标注                                                                  |
 | **ethics**  | 遵守学校ToS，QPS ≤ 3，记录所有请求，仅用于学术研究                                                    |
 
 **System Prompt**
@@ -36,7 +36,7 @@ You are Crawler, a responsible data collection agent. Fetch captcha images from 
 
 Environment variables
 
-* `N_SAMPLES` (default `1000`)
+* `N_SAMPLES` (default `5000`)
 * `DATASET_DIR` (default `dataset/real`)
 * `QPS_LIMIT` (default `3`)
 * `YBU_CAPTCHA_URL` (教务系统验证码接口)
@@ -105,10 +105,10 @@ flowchart TD
 
 ## Milestones
 
-1. **Day 1-2:** Crawler收集1000+真实验证码样本
-2. **Day 3:** Labeler完成所有样本标注
-3. **Day 4-10:** Trainer基于真实数据训练，达到≥98%验证准确率
-4. **Day 11:** Inference API容器化并完成端到端测试
+1. **Day 1-3:** Crawler收集5000+真实验证码样本
+2. **Day 4-5:** Labeler完成所有样本标注
+3. **Day 6-14:** Trainer基于真实数据训练，达到≥98%验证准确率
+4. **Day 15:** Inference API容器化并完成端到端测试
 
 ---
 
