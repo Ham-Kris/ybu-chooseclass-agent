@@ -19,11 +19,11 @@ class TestCaptchaSolverAgent:
     
     def setup_method(self):
         """测试前准备"""
-        self.agent = CaptchaSolverAgent(engine="paddle")
+        self.agent = CaptchaSolverAgent(mode="manual")
     
     def test_init(self):
         """测试初始化"""
-        assert self.agent.engine == "paddle"
+        assert self.agent.mode == "manual"
         assert self.agent.model_path is None
     
     def test_preprocess_image(self):
@@ -40,10 +40,10 @@ class TestCaptchaSolverAgent:
         assert processed is not None
         assert isinstance(processed, np.ndarray)
     
-    def test_recognize_text_without_ocr(self):
-        """测试在没有OCR引擎时的文本识别"""
-        # 创建没有OCR的代理
-        agent_no_ocr = CaptchaSolverAgent(engine="none")
+    def test_recognize_text_without_ai(self):
+        """测试在手动模式下的文本识别"""
+        # 创建手动模式的代理
+        agent_manual = CaptchaSolverAgent(mode="manual")
         
         # 创建测试图片
         test_image = Image.new('RGB', (100, 40), color='white')
@@ -51,7 +51,7 @@ class TestCaptchaSolverAgent:
         test_image.save(img_bytes, format='PNG')
         img_data = img_bytes.getvalue()
         
-        result = agent_no_ocr.recognize_text(img_data)
+        result = agent_manual.recognize_text(img_data)
         
         assert isinstance(result, dict)
         assert 'code' in result

@@ -5,7 +5,7 @@
 ## 🎯 项目特性
 
 - **智能登录**：支持配置文件和命令行参数两种登录方式，自动处理登录流程和 Cookie 管理
-- **验证码识别**：可选集成 PaddleOCR 引擎，支持自动识别验证码和手动输入模式
+- **验证码识别**：正在开发基于深度学习的验证码识别模型，目前支持手动输入模式
 - **账户隔离**：使用自定义登录时自动清理数据，确保不同账户间数据不混淆
 - **智能课程筛选**：支持课程类型、关键词、优先级等多维度筛选
 - **自动选课**：支持单门课程抢课和批量自动选课
@@ -67,7 +67,7 @@ playwright install chromium
 **注意事项：**
 - Windows 用户建议使用 `start_windows.bat` 脚本，自动处理异步兼容性问题
 - 推荐使用 Python 3.8+ 版本，以获得更好的异步支持
-- PaddleOCR 已包含在 requirements.txt 中，自动安装
+- 验证码识别模型正在开发中，目前采用手动输入方式
 
 ### 2. 配置设置
 
@@ -88,9 +88,9 @@ YBU_PASS=********      # 密码
 # 浏览器设置
 HEADLESS=true          # 无头模式
 
-# OCR 引擎设置（可选）
-# OCR_ENGINE=paddle    # 验证码识别引擎，注释掉则使用手动输入
-# OCR_ENGINE=NONE      # 或设置为NONE禁用自动识别
+# 验证码识别设置（开发中）
+# CAPTCHA_MODEL=manual    # 验证码识别模式，目前仅支持手动输入
+# CAPTCHA_MODEL=ai        # AI模型识别（开发中，暂不可用）
 ```
 
 ### 3. 首次使用
@@ -256,22 +256,90 @@ python3 main.py scheduler stop
 
 ### 验证码处理机制
 
-系统支持多种验证码处理方式：
+系统正在开发基于深度学习的验证码识别能力：
 
-1. **自动识别**：设置 `OCR_ENGINE=paddle` 启用 PaddleOCR 自动识别验证码
-2. **手动输入**：不设置 OCR_ENGINE 或设置为 NONE 时使用手动输入模式
+1. **手动输入模式**：当前默认模式，用户需要手动输入验证码
+2. **AI模型识别**：正在训练专门的视觉模型来自动识别YBU教务系统验证码
 3. **验证码刷新**：自动刷新验证码确保最新状态
 
-**OCR引擎配置：**
-```bash
-# 启用自动识别（需要安装PaddleOCR）
-OCR_ENGINE=paddle
+**验证码识别模型开发计划：**
+- **数据收集阶段**：收集YBU教务系统验证码样本，建立训练数据集
+- **模型训练阶段**：使用CRNN+CTC架构训练验证码识别模型
+- **模型部署阶段**：集成训练好的模型到选课系统中
+- **性能优化阶段**：持续优化模型准确率和推理速度
 
-# 禁用自动识别，使用手动输入
-# OCR_ENGINE=NONE
+**验证码特征分析：**
+- 5位大写字母数字组合
+- 鱼眼扭曲效果
+- 中央红色竖线干扰
+- 随机噪点和模糊效果
 
-# 或者直接注释掉/删除这一行
+详细的模型开发规范请参考 `VISION_MODEL/AGENTS.md` 文件。
+
+### 🤖 验证码识别模型开发
+
+本项目正在开发专门针对YBU教务系统验证码的深度学习识别模型：
+
+#### 开发流程
+
+1. **数据收集阶段**
+   - 从YBU教务系统爬取真实验证码样本
+   - 遵守访问频率限制（QPS ≤ 3，遵守学校ToS）
+   - 收集≥1000张真实验证码图片
+   - 人工标注建立高质量训练数据集
+
+2. **数据增强阶段**
+   - 对收集的验证码进行数据增强
+   - 应用旋转、缩放、噪声等变换增加数据多样性
+   - 合成额外的训练样本以平衡数据分布
+
+3. **模型训练阶段**
+   - 架构：CRNN（ResNet18 + BiLSTM + CTC）
+   - 字符集：26个大写字母 + 10个数字
+   - 训练目标：验证集准确率 ≥ 98%
+   - 支持GPU加速训练
+
+4. **模型部署阶段**
+   - 集成到现有选课系统
+   - FastAPI提供HTTP推理接口
+   - P99延迟 < 80ms（GPU环境）
+
+#### 技术栈
+
+- **深度学习框架**：PyTorch, TorchVision
+- **图像处理**：OpenCV, Pillow, NumPy
+- **模型架构**：CRNN + CTC Loss
+- **API服务**：FastAPI
+- **监控工具**：Weights & Biases（可选）
+
+#### 文件结构
+
 ```
+VISION_MODEL/
+├── AGENTS.md              # 详细开发规范
+├── dataset/               # 数据集目录
+│   ├── train/            # 训练数据
+│   └── real/             # 真实数据（可选）
+├── models/               # 模型文件
+│   └── best.pt          # 最佳模型
+├── src/                  # 源代码
+│   ├── crawler.py       # 数据爬取
+│   ├── trainer.py       # 模型训练
+│   └── inference.py     # 推理服务
+└── hyperparams.yaml     # 超参数配置
+```
+
+#### 开发进度
+
+- [x] 项目规划和架构设计
+- [ ] 数据爬取器开发
+- [ ] 数据标注和预处理
+- [ ] 模型训练器开发
+- [ ] 推理服务开发
+- [ ] 集成到选课系统
+- [ ] 性能优化和测试
+
+完整的开发规范和代理系统设计请查看 `VISION_MODEL/AGENTS.md`。
 
 ### 时间窗口智能检测
 
@@ -325,10 +393,15 @@ ybu-chooseclass-agent/
 ├── agents/                      # 代理模块
 │   ├── __init__.py
 │   ├── browser_agent.py         # 浏览器代理（核心）
-│   ├── captcha_solver_agent.py  # 验证码识别代理
+│   ├── captcha_solver_agent.py  # 验证码识别代理（开发中）
 │   ├── data_manager_agent.py    # 数据管理代理
 │   ├── scheduler_agent.py       # 调度代理
 │   └── cli_interface_agent.py   # 命令行界面代理
+├── VISION_MODEL/                # 验证码识别模型开发
+│   ├── AGENTS.md               # 模型开发规范文档
+│   ├── dataset/                # 数据集目录（待创建）
+│   ├── models/                 # 训练模型目录（待创建）
+│   └── src/                    # 模型源代码（待创建）
 ├── tests/                       # 测试文件
 │   ├── __init__.py
 │   └── test_captcha_solver.py
@@ -388,7 +461,7 @@ python3 main.py auto-select-all \
 A: 这是正常提示，请在学校规定的选课时间内使用系统。
 
 ### Q: 验证码识别失败怎么办？
-A: 系统会自动切换到手动输入模式，按提示操作即可。
+A: 目前系统使用手动输入模式，请按照提示输入验证码。AI模型正在开发中，未来将支持自动识别。
 
 ### Q: auto-select-all 没有选中任何课程？
 A: 检查筛选条件是否过于严格，或当前课程无剩余名额。
@@ -430,16 +503,8 @@ A:
 ### Q: requirements.txt 安装失败怎么办？
 A:
 1. 升级 pip：`python -m pip install --upgrade pip`
-2. 分步安装：先安装基础依赖，再安装 PaddleOCR
-3. 使用国内镜像：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
-4. Windows 用户可以使用 `start_windows.bat` 自动处理
-
-### Q: PaddleOCR 安装失败怎么办？
-A: 
-1. 对于 Windows 用户，确保已安装 Visual Studio Build Tools
-2. 可以跳过 PaddleOCR 安装，系统会自动降级到手动输入验证码
-3. 或使用 CPU 版本：`pip install paddlepaddle -f https://www.paddlepaddle.org.cn/whl/windows/mkl/avx/stable.html`
-4. 在 .env 中注释掉 OCR_ENGINE 或设置为 NONE 来禁用自动识别
+2. 使用国内镜像：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
+3. Windows 用户可以使用 `start_windows.bat` 自动处理
 
 ### Q: 启动脚本提示 "invalid choice: '!command!'" 怎么办？
 A: 这是Windows批处理脚本的变量扩展问题，提供以下解决方案：
@@ -496,6 +561,33 @@ python3 main.py login -u 2021001 -p my@pass123!
 A: 
 为了避免不同账户的数据混淆，系统在检测到使用自定义账户时会自动清理旧的cookie和数据库文件。这确保每个账户都有独立的会话状态。
 
+### Q: 验证码识别模型什么时候能使用？
+A: 
+验证码识别模型正在开发中，预计分以下阶段：
+1. **数据收集**：3-5天完成验证码爬取和标注
+2. **模型训练**：1-2周完成CRNN模型训练
+3. **集成测试**：1周完成系统集成和测试
+4. **部署上线**：通过充分测试后正式发布
+
+目前可以查看 `VISION_MODEL/AGENTS.md` 了解详细开发进度。
+
+### Q: 验证码模型的准确率目标是多少？
+A: 
+我们的目标是在验证集上达到 ≥98% 的识别准确率，同时保证：
+- P99推理延迟 < 80ms（GPU环境）
+- 支持CPU环境运行（延迟稍高）
+- 模型文件大小 < 50MB，便于部署
+
+### Q: 如何参与验证码识别模型开发？
+A: 
+欢迎参与模型开发！可以通过以下方式贡献：
+1. **数据收集**：提供YBU教务系统验证码样本
+2. **代码贡献**：参与数据合成器、训练器或推理服务开发
+3. **测试反馈**：测试模型性能并提供优化建议
+4. **文档完善**：补充开发文档和使用说明
+
+请查看 `VISION_MODEL/AGENTS.md` 了解具体开发规范和贡献指南。
+
 ## 🤝 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
@@ -513,7 +605,7 @@ MIT License - 本项目仅供学习研究使用，不得用于商业用途。
 ## 🙏 致谢
 
 - 感谢 @xuyanhenry，他的[延边大学抢课项目](https://github.com/xuyanhenry/ybu-Grab-classes)为本项目提供了宝贵的参考和启发
-- 感谢 PaddleOCR 项目提供的 OCR 引擎
+- 感谢深度学习社区为验证码识别模型开发提供的技术支持
 - 感谢 Playwright 项目提供的浏览器自动化框架
 - 感谢所有贡献者的支持和建议
 

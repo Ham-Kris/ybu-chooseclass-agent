@@ -101,12 +101,9 @@ async def main():
         )
         
         # 创建验证码识别代理
-        # 只有当配置中有 ocr_engine 时才传递给 CaptchaSolverAgent
-        ocr_engine = cli_agent.config.get('ocr_engine')
-        if ocr_engine:
-            captcha_solver = CaptchaSolverAgent(engine=ocr_engine)
-        else:
-            captcha_solver = CaptchaSolverAgent()  # 使用默认构造函数
+        # 根据配置初始化验证码识别代理
+        captcha_mode = cli_agent.config.get('captcha_mode', 'manual')
+        captcha_solver = CaptchaSolverAgent(mode=captcha_mode)
         
         # 创建数据管理代理
         data_manager = DataManagerAgent()

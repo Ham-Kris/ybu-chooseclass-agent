@@ -108,7 +108,7 @@ async def test_verification_system():
         
         # 测试预处理功能
         console.print("✅ 验证码识别代理创建成功", style="green")
-        console.print("📋 支持的识别方法：OCR识别 + 手动输入回退", style="blue")
+        console.print("📋 支持的识别方法：AI模型识别（开发中）+ 手动输入", style="blue")
         
         return True
         

@@ -7,8 +7,8 @@ CaptchaSolverAgent - 验证码识别代理
 腐蚀/膨胀去噪 → 投影分割 → 字符标准化 (28×28)
 
 模型选型：
-轻量方案：paddleocr==2.7 + cls=False, det=False, rec=True
-定制方案：卷积特征 + 双向 GRU + CTC loss（参见 crnn_lite_onnx）
+基础方案：图像预处理 + 手动输入
+AI方案：CRNN (ResNet18 + BiLSTM + CTC) 自动识别（开发中）
 
 输出：{ "code": "7a9B" }
 """
@@ -25,44 +25,41 @@ console = Console()
 
 
 class CaptchaSolverAgent:
-    def __init__(self, engine: str = None, model_path: str = None):
+    def __init__(self, mode: str = "manual", model_path: str = None):
         """
         初始化验证码识别代理
         
         Args:
-            engine: 识别引擎 ('paddle', 'custom', None)
-            model_path: 自定义模型路径
+            mode: 识别模式 ('manual', 'ai')
+            model_path: AI模型路径（用于ai模式）
         """
-        self.engine = engine
+        self.mode = mode
         self.model_path = model_path
-        self.ocr = None
-        self._init_engine()
+        self.model = None
+        self._init_model()
 
-    def _init_engine(self):
-        """初始化识别引擎"""
-        if self.engine == "paddle":
-            try:
-                import paddleocr
-                self.ocr = paddleocr.PaddleOCR(
-                    use_angle_cls=False,
-                    use_gpu=False,
-                    show_log=False,
-                    det=False,
-                    rec=True,
-                    lang='en'
-                )
-                console.print("🔍 PaddleOCR 引擎已初始化", style="green")
-            except ImportError:
-                console.print("❌ PaddleOCR 未安装，使用基础预处理", style="red")
-                self.ocr = None
-        elif self.engine == "custom" and self.model_path:
-            # 这里可以加载自定义 CRNN 模型
-            console.print("🔍 自定义模型引擎已初始化", style="green")
-        elif self.engine is None:
-            # 当没有设置 OCR_ENGINE 环境变量时，不显示任何信息，静默使用手动输入
-            self.ocr = None
+    def _init_model(self):
+        """初始化识别模型"""
+        if self.mode == "ai":
+            if self.model_path:
+                try:
+                    # 这里将加载训练好的CRNN模型
+                    console.print("🔍 AI识别模型已初始化", style="green")
+                    # TODO: 实现模型加载逻辑
+                    # self.model = torch.load(self.model_path)
+                except Exception as e:
+                    console.print(f"❌ AI模型加载失败：{e}，回退到手动模式", style="red")
+                    self.mode = "manual"
+                    self.model = None
+            else:
+                console.print("⚠️ AI模式需要指定模型路径，回退到手动模式", style="yellow")
+                self.mode = "manual"
+        elif self.mode == "manual":
+            # 手动输入模式，不需要初始化任何模型
+            self.model = None
         else:
-            console.print("⚠️ 使用基础预处理，需要手动输入", style="yellow")
+            console.print("⚠️ 未知识别模式，使用手动输入", style="yellow")
+            self.mode = "manual"
 
     def preprocess_image(self, image_data: bytes) -> np.ndarray:
         """
@@ -168,44 +165,21 @@ class CaptchaSolverAgent:
             if processed_img is None:
                 return {"code": "", "confidence": 0.0, "error": "预处理失败"}
 
-            # 使用 PaddleOCR 识别
-            if self.ocr is not None:
-                # 转换为 PIL Image 格式
-                pil_img = Image.fromarray(processed_img)
-                
-                # PaddleOCR 识别
-                results = self.ocr.ocr(np.array(pil_img), cls=False)
-                
-                if results and len(results) > 0 and results[0]:
-                    # 提取文本和置信度
-                    text_results = results[0]
-                    if text_results:
-                        recognized_text = ""
-                        total_confidence = 0.0
-                        count = 0
-                        
-                        for item in text_results:
-                            if len(item) >= 2:
-                                text = item[1][0]  # 提取文本
-                                confidence = item[1][1]  # 提取置信度
-                                recognized_text += text
-                                total_confidence += confidence
-                                count += 1
-                        
-                        avg_confidence = total_confidence / count if count > 0 else 0.0
-                        
-                        # 清理识别结果（去除空格和特殊字符）
-                        clean_text = ''.join(c for c in recognized_text if c.isalnum())
-                        
-                        console.print(f"🔍 识别结果：{clean_text}，置信度：{avg_confidence:.2f}", style="green")
-                        
-                        return {
-                            "code": clean_text,
-                            "confidence": avg_confidence,
-                            "raw_results": text_results
-                        }
+            # 使用 AI 模型识别
+            if self.mode == "ai" and self.model is not None:
+                try:
+                    # TODO: 实现AI模型推理逻辑
+                    # 这里将调用训练好的CRNN模型进行推理
+                    # predicted_text = self.model.predict(processed_img)
+                    
+                    console.print("🤖 AI模型识别功能开发中...", style="yellow")
+                    return {"code": "", "confidence": 0.0, "manual_input_required": True}
+                    
+                except Exception as e:
+                    console.print(f"❌ AI模型推理失败：{e}", style="red")
+                    return {"code": "", "confidence": 0.0, "error": str(e)}
             
-            # 如果 OCR 失败或不可用，返回需要手动输入的结果
+            # 如果 AI 模型不可用，返回需要手动输入的结果
             console.print("⚠️ 自动识别失败，需要手动输入", style="yellow")
             return {"code": "", "confidence": 0.0, "manual_input_required": True}
             

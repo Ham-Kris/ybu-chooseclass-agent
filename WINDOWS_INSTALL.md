@@ -60,14 +60,16 @@ pip install colorama pywin32
 pip install pillow opencv-python numpy
 ```
 
-### 步骤 5：安装 PaddleOCR（可选）
+### 步骤 5：安装深度学习依赖（验证码模型开发）
 ```cmd
-# CPU 版本（推荐）
-pip install paddlepaddle==2.5.1 -f https://www.paddlepaddle.org.cn/whl/windows/mkl/avx/stable.html
-pip install paddleocr
+# 安装PyTorch（用于验证码识别模型开发）
+pip install torch torchvision
+
+# 安装验证码生成库
+pip install captcha
 
 # 如果上述命令失败，可以跳过此步骤
-# 系统会自动使用手动验证码输入模式
+# 系统目前使用手动验证码输入模式
 ```
 
 ### 步骤 6：安装 Playwright 浏览器
@@ -86,7 +88,7 @@ notepad .env
 YBU_USER=你的学号
 YBU_PASS=你的密码
 HEADLESS=true
-OCR_ENGINE=paddle
+CAPTCHA_MODE=manual
 ```
 
 ## ⚡ 快速测试
@@ -118,18 +120,20 @@ python main.py status
 2. 使用 `start_windows.bat` 启动脚本
 3. 项目已自动集成异步修复代码
 
-### 问题 2: PaddleOCR 安装失败
+### 问题 2: PyTorch 安装失败
 **错误信息：** 各种编译错误
 
 **解决方案：**
-1. 安装 Visual Studio Build Tools：
-   - 下载 [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
-   - 安装时选择 "C++ build tools" 工作负载
-
-2. 或者跳过 PaddleOCR 安装：
+1. 使用官方安装命令：
    ```cmd
-   # 从 requirements.txt 中移除 paddlepaddle 和 paddleocr
-   # 系统会自动使用手动验证码输入
+   # 访问 https://pytorch.org/ 获取适合你系统的安装命令
+   pip install torch torchvision torchaudio
+   ```
+
+2. 或者跳过深度学习依赖：
+   ```cmd
+   # 系统目前使用手动验证码输入模式
+   # AI模型识别功能正在开发中
    ```
 
 ### 问题 3: Playwright 浏览器下载失败
