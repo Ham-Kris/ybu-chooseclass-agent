@@ -1,5 +1,7 @@
 # YBU 延边大学自动选课代理系统
 
+**⚠️注意：由于一些进度丢失，和选课测试时间有限，本项目未能完善。有些功能可能不可用。**
+
 本项目是一个延边大学教务系统自动选课代理系统，能够自动登录并选择所有可选课程，仅供学习和研究使用，禁止任何人在任何平台出售/出租本程序提供的服务。
 
 ## 🎯 项目特性
@@ -474,10 +476,10 @@ with open('processed.png', 'rb') as f:
 
 ### 可视化调试
 
-使用 `--headless false` 参数可以看到浏览器操作过程：
+使用 `--headless` 参数可以看到浏览器操作过程：
 
 ```bash
-python3 main.py auto-select-all --headless false
+python3 main.py auto-select-all --headless
 ```
 
 ### 日志分析
