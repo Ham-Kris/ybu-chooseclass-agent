@@ -687,7 +687,7 @@ class BrowserAgent:
                     
             except (json.JSONDecodeError, KeyError, IndexError) as e:
                 console.print(f"❌ 解析JSON响应失败: {e}", style="red")
-                console.print(f"📄 响应内容: {content[:200]}...", style="yellow")
+                console.print(f"📄 响应内容: {response_text[:200]}...", style="yellow")
                 
             return {'available': False, 'total_remaining': 0, 'classes': [], 'best_class': None}
 
