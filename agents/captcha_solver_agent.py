@@ -3,7 +3,7 @@ CaptchaSolverAgent - 验证码识别代理
 职责：接收验证码图，对其进行预处理并输出文本
 
 预处理流程：
-二值化处理
+灰度化 + 对比度增强 (2.0倍)
 
 模型选型：
 基础方案：图像预处理 + 手动输入
@@ -20,7 +20,7 @@ import base64
 import io
 import sys
 import os
-from PIL import Image
+from PIL import Image, ImageEnhance
 from typing import Dict, Optional, Any
 from rich.console import Console
 
@@ -90,7 +90,7 @@ class CaptchaSolverAgent:
 
     def preprocess_image(self, image_data: bytes) -> bytes:
         """
-        预处理验证码图片 - 使用OpenCV OTSU二值化
+        预处理验证码图片 - 移除红色竖线干扰并进行对比度增强
         
         Args:
             image_data: 图片字节数据
@@ -99,21 +99,49 @@ class CaptchaSolverAgent:
             预处理后的图片字节数据
         """
         try:
-            # 将字节数据转换为numpy数组
-            nparr = np.frombuffer(image_data, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            import numpy as np
             
-            # 1. 转换为灰度图
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            # 使用PIL处理图片
+            # 1. 从字节数据创建PIL图像
+            img = Image.open(io.BytesIO(image_data))
             
-            # 2. OTSU自适应二值化
-            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            # 2. 移除红色竖线干扰（#EF0009）
+            # 转换为RGB模式以确保颜色处理正确
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
             
-            # 3. 转换回字节数据
-            _, buffer = cv2.imencode('.png', binary)
-            processed_bytes = buffer.tobytes()
+            # 转换为numpy数组进行像素操作
+            img_array = np.array(img)
             
-            console.print("🖼️ 图片预处理完成（灰度+OTSU二值化）", style="blue")
+            # 定义红色目标颜色范围（#EF0009及其相近颜色）
+            target_red = np.array([239, 0, 9])  # #EF0009
+            tolerance = 20  # 颜色容差
+            
+            # 计算颜色差距
+            diff = np.abs(img_array - target_red)
+            red_mask = np.all(diff <= tolerance, axis=2)
+            
+            # 将红色区域替换为白色
+            img_array[red_mask] = [255, 255, 255]
+            
+            # 转换回PIL图像
+            img = Image.fromarray(img_array, 'RGB')
+            
+            console.print("🔴 已移除红色竖线干扰（#EF0009）", style="green")
+            
+            # 3. 转换为灰度图
+            gray_img = img.convert('L')
+            
+            # 4. 增强对比度 (2.0倍)
+            enhancer = ImageEnhance.Contrast(gray_img)
+            contrast_img = enhancer.enhance(2.0)
+            
+            # 5. 转换回字节数据
+            output_buffer = io.BytesIO()
+            contrast_img.save(output_buffer, format='PNG')
+            processed_bytes = output_buffer.getvalue()
+            
+            console.print("🖼️ 图片预处理完成（移除红线+灰度+对比度增强2.0倍）", style="blue")
             return processed_bytes
             
         except Exception as e:
@@ -186,11 +214,45 @@ class CaptchaSolverAgent:
             save_path: 保存路径
         """
         try:
-            processed_bytes = self.preprocess_image(image_data)
-            if processed_bytes is not None:
-                with open(save_path, 'wb') as f:
-                    f.write(processed_bytes)
-                console.print(f"💾 预处理图片已保存到：{save_path}", style="blue")
+            import numpy as np
+            
+            # 使用PIL处理图片（与preprocess_image方法保持一致）
+            # 1. 从字节数据创建PIL图像
+            img = Image.open(io.BytesIO(image_data))
+            
+            # 2. 移除红色竖线干扰（#EF0009）
+            # 转换为RGB模式以确保颜色处理正确
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # 转换为numpy数组进行像素操作
+            img_array = np.array(img)
+            
+            # 定义红色目标颜色范围（#EF0009及其相近颜色）
+            target_red = np.array([239, 0, 9])  # #EF0009
+            tolerance = 20  # 颜色容差
+            
+            # 计算颜色差距
+            diff = np.abs(img_array - target_red)
+            red_mask = np.all(diff <= tolerance, axis=2)
+            
+            # 将红色区域替换为白色
+            img_array[red_mask] = [255, 255, 255]
+            
+            # 转换回PIL图像
+            img = Image.fromarray(img_array, 'RGB')
+            
+            # 3. 转换为灰度图
+            gray_img = img.convert('L')
+            
+            # 4. 增强对比度 (2.0倍)
+            enhancer = ImageEnhance.Contrast(gray_img)
+            contrast_img = enhancer.enhance(2.0)
+            
+            # 5. 保存处理后的图片
+            contrast_img.save(save_path)
+            
+            console.print(f"💾 预处理图片已保存到：{save_path}（包含红线移除处理）", style="blue")
         except Exception as e:
             console.print(f"❌ 保存预处理图片失败：{e}", style="red")
 
@@ -253,17 +315,34 @@ class CaptchaSolverAgent:
             console.print(f"❌ 获取手动输入失败：{e}", style="red")
             return ""
 
-    def solve_captcha(self, image_data: bytes, manual_fallback: bool = True) -> str:
+    def solve_captcha(self, image_data: bytes, manual_fallback: bool = True, retry_count: int = 0) -> str:
         """
         解决验证码（主入口方法）
         
         Args:
             image_data: 验证码图片数据
             manual_fallback: 是否允许手动输入作为回退方案
+            retry_count: 重试次数，用于文件命名
             
         Returns:
             验证码文本
         """
+        # 根据重试次数生成文件名
+        suffix = f"_retry{retry_count}" if retry_count > 0 else ""
+        original_path = f"temp_captcha_original{suffix}.jpg"
+        processed_path = f"temp_captcha{suffix}.jpg"
+        
+        # 保存原始验证码图片
+        try:
+            with open(original_path, 'wb') as f:
+                f.write(image_data)
+            console.print(f"💾 原始验证码已保存到：{original_path}", style="blue")
+        except Exception as e:
+            console.print(f"⚠️ 保存原始验证码失败：{e}", style="yellow")
+        
+        # 保存预处理后的验证码图片
+        self.save_processed_image(image_data, processed_path)
+        
         # 首先尝试自动识别
         result = self.recognize_text(image_data)
         

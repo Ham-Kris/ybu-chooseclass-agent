@@ -21,20 +21,20 @@
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Web 界面       │    │  CLIInterface    │    │   BrowserAgent  │
-│  (Flask + UI)   │◄──►│     Agent        │◄──►│                 │
+│     Web UI      │    │   CLIInterface   │    │  BrowserAgent   │
+│  (Flask + UI)   │◄──►│      Agent       │◄──►│                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
           │                       │                       │
           ▼                       ▼                       ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  多用户会话管理   │    │  DataManager     │    │ CaptchaSolver   │
-│  (WebSocket)    │    │     Agent        │    │     Agent       │
+│ MultiUserManger │    │    DataManager   │    │  CaptchaSolver  │
+│   (WebSocket)   │    │       Agent      │    │      Agent      │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                                   │                       
                                   ▼                       
                         ┌──────────────────┐              
                         │   Scheduler      │              
-                        │     Agent        │              
+                        │      Agent       │              
                         └──────────────────┘              
 ```
 
@@ -147,7 +147,7 @@ CAPTCHA_MODEL=ai        # 验证码识别模式：ai（DdddOcr自动识别）或
 
 # Web界面配置
 WEB_HOST=0.0.0.0       # Web服务器监听地址（0.0.0.0支持局域网访问）
-WEB_PORT=5001          # Web服务器端口
+WEB_PORT=3000          # Web服务器端口
 WEB_DEBUG=false        # Web调试模式
 ```
 
@@ -188,16 +188,16 @@ python3 start_web.py
 ```
 🚀 启动 YBU 选课系统 Web 界面
 ==================================================
-📱 访问地址：http://localhost:5001
-📱 局域网访问：http://your-ip:5001
+📱 访问地址：http://localhost:3000
+📱 局域网访问：http://your-ip:3000
 🔧 支持多用户并发登录和抢课
 ==================================================
 ```
 
 #### 访问Web界面
 
-- **本地访问**：http://localhost:5001
-- **局域网访问**：http://your-ip:5001（同学可以通过您的IP访问）
+- **本地访问**：http://localhost:3000
+- **局域网访问**：http://your-ip:3000（同学可以通过您的IP访问）
 - **移动设备**：同样的地址，响应式设计自动适配手机和平板
 
 #### Web界面特性
@@ -241,7 +241,7 @@ python3 start_web.py
 ifconfig | grep inet     # Mac/Linux
 ipconfig                 # Windows
 
-# 3. 将IP地址告诉同学，格式：http://your-ip:5001
+# 3. 将IP地址告诉同学，格式：http://your-ip:3000
 ```
 
 **多用户优势**：
@@ -297,8 +297,8 @@ WEB_DEBUG=true python3 start_web.py       # 调试模式
 ```
 
 **Web界面访问地址**：
-- **本地访问**：http://localhost:5001
-- **局域网访问**：http://your-ip:5001
+- **本地访问**：http://localhost:3000
+- **局域网访问**：http://your-ip:3000
 - **自定义端口**：http://localhost:端口号
 
 ### 🔐 登录方式说明
@@ -748,7 +748,7 @@ A:
 ### Q: Web界面无法访问怎么办？
 A: 
 1. **检查服务器状态**：确保 `python3 start_web.py` 正在运行
-2. **检查端口占用**：默认端口5001可能被占用，尝试使用 `WEB_PORT=8080 python3 start_web.py`
+2. **检查端口占用**：默认端口3000可能被占用，尝试使用 `WEB_PORT=8080 python3 start_web.py`
 3. **检查防火墙**：确保防火墙没有阻止端口访问
 4. **浏览器缓存**：清除浏览器缓存，刷新页面
 
@@ -769,7 +769,7 @@ Web界面已做用户隔离处理，每个用户独立运行：
 ### Q: 手机访问Web界面有问题怎么办？
 A: 
 1. **确认网络连接**：手机和电脑在同一WiFi网络
-2. **使用正确地址**：http://电脑IP:5001（不是localhost）
+2. **使用正确地址**：http://电脑IP:3000（不是localhost）
 3. **浏览器兼容性**：推荐使用Chrome、Safari等主流浏览器
 4. **响应式适配**：界面已适配移动端，如有显示问题请反馈
 
@@ -796,7 +796,7 @@ A:
 1. **使用Gunicorn**：
    ```bash
    pip install gunicorn
-   gunicorn -w 4 -b 0.0.0.0:5001 --worker-class eventlet app:app
+   gunicorn -w 4 -b 0.0.0.0:3000 --worker-class eventlet app:app
    ```
 2. **使用Docker**：参考项目中的Docker配置
 3. **反向代理**：可以配置Nginx反向代理

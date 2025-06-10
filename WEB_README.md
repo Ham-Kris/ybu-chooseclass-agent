@@ -25,18 +25,18 @@ python3 start_web.py
 ```
 🚀 启动 YBU 选课系统 Web 界面
 ==================================================
-📱 访问地址：http://localhost:5001
-📱 局域网访问：http://your-ip:5001
+📱 访问地址：http://localhost:3000
+📱 局域网访问：http://your-ip:3000
 🔧 主机地址：0.0.0.0
-🔧 端口：5001
+🔧 端口：3000
 🔧 支持多用户并发登录和抢课
 ==================================================
 ```
 
 ### 2. 访问界面
 
-- **本地访问**：http://localhost:5001
-- **局域网访问**：http://your-ip:5001（同学可以通过您的IP访问）
+- **本地访问**：http://localhost:3000
+- **局域网访问**：http://your-ip:3000（同学可以通过您的IP访问）
 - **移动设备**：同样的地址，响应式设计自动适配
 
 ### 3. 直接登录
@@ -140,7 +140,7 @@ ipconfig                 # Windows
 python3 start_web.py
 
 # 同学访问
-http://your-ip:5001
+http://your-ip:3000
 ```
 
 ### 自定义配置
@@ -163,7 +163,7 @@ WEB_DEBUG=true python3 start_web.py
 pip install gunicorn
 
 # 启动应用
-gunicorn -w 4 -b 0.0.0.0:5001 --worker-class eventlet app:app
+gunicorn -w 4 -b 0.0.0.0:3000 --worker-class eventlet app:app
 ```
 
 #### Docker部署
@@ -176,7 +176,7 @@ COPY . .
 RUN pip install -r requirements.txt -r requirements.txt
 RUN playwright install chromium
 
-EXPOSE 5001
+EXPOSE 3000
 
 CMD ["python3", "start_web.py"]
 ```
@@ -197,7 +197,7 @@ CMD ["python3", "start_web.py"]
 ```bash
 # Web服务器配置
 export WEB_HOST=0.0.0.0      # 监听地址
-export WEB_PORT=5001         # 监听端口
+export WEB_PORT=3000         # 监听端口
 export WEB_DEBUG=false       # 调试模式
 
 # 浏览器配置
@@ -209,7 +209,7 @@ export CAPTCHA_MODE=ai       # 验证码识别模式
 ```python
 # 在start_web.py中可以修改
 host = os.getenv('WEB_HOST', '0.0.0.0')
-port = os.getenv('WEB_PORT', '5001')
+port = os.getenv('WEB_PORT', '3000')
 debug = os.getenv('WEB_DEBUG', 'false').lower() in ('true', '1', 'yes')
 ```
 
@@ -220,7 +220,7 @@ debug = os.getenv('WEB_DEBUG', 'false').lower() in ('true', '1', 'yes')
 **1. 端口被占用**
 ```bash
 # 查找占用端口的进程
-lsof -i :5001
+lsof -i :3000
 
 # 使用其他端口
 WEB_PORT=8080 python3 start_web.py
@@ -242,7 +242,7 @@ WEB_PORT=8080 python3 start_web.py
 ps aux | grep python | grep start_web
 
 # 检查端口监听
-netstat -an | grep 5001
+netstat -an | grep 3000
 ```
 
 **5. 多用户使用问题**
@@ -275,7 +275,7 @@ netstat -an | grep 5001
 ### 多人使用
 - 支持同学们同时使用同一个Web服务
 - 每人使用自己的YBU账号登录
-- 局域网共享：`http://your-ip:5001`
+- 局域网共享：`http://your-ip:3000`
 
 ### 最佳实践
 - 选课前测试网络连接

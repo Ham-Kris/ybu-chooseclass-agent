@@ -16,16 +16,10 @@ __pycache__
 
 *.db
 *.log
-temp_captcha.jpg
+temp_*
 cookies.json
 ybu_agent.jsonl
-
-# HTML 文件（调试文件和测试文件）
-debug_course_page.html
-debug_xklc_view.html
-
-# 学生选课网页源代码测试文件夹（用于开发）
-miscellaneous/学生选课-主页面.html
-miscellaneous/学生选课-点击选课后.html
-miscellaneous/学生选课_files/
-miscellaneous/学生选课1_files/
+debug_*
+学生选课*
+tests
+test_*

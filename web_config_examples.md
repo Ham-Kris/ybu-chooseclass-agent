@@ -32,7 +32,7 @@ WEB_DEBUG=false     # 生产环境关闭调试
 ```bash
 # 实例1 - .env
 WEB_HOST=0.0.0.0
-WEB_PORT=5001
+WEB_PORT=3000
 WEB_DEBUG=false
 
 # 实例2 - .env.instance2

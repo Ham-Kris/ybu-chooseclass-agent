@@ -163,12 +163,20 @@ class DataManagerAgent:
             课程 DataFrame
         """
         try:
+            # 课程类型映射
+            type_mapping = {
+                'professional': '必修',
+                'public': '选修',
+                'regular': '必修',
+                'retake': '重修'
+            }
+            
             query = "SELECT * FROM courses"
             params = []
             
-            if course_type:
+            if course_type and course_type in type_mapping:
                 query += " WHERE type = ?"
-                params.append(course_type)
+                params.append(type_mapping[course_type])
             
             query += " ORDER BY type, name"
             

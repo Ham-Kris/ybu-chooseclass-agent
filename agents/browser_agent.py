@@ -13,6 +13,8 @@ from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 from urllib.parse import urlparse, parse_qs
 import re
 from rich.console import Console
+import os
+from agents.captcha_solver_agent import CaptchaSolverAgent
 
 console = Console()
 
@@ -35,6 +37,11 @@ class BrowserAgent:
         self.login_url = f"{self.base_url}/jsxsd/"
         self.cookies_file = "cookies.json"
         self.retry_count = 3
+        
+        # 初始化验证码识别器（避免重复加载模型）
+        captcha_mode = os.getenv('CAPTCHA_MODE', 'ai')  # 默认使用AI识别
+        self.captcha_solver = CaptchaSolverAgent(mode=captcha_mode)
+        console.print(f"🔍 验证码识别器已初始化（模式：{captcha_mode}）", style="green")
 
     async def start(self):
         """启动浏览器"""
@@ -521,8 +528,6 @@ class BrowserAgent:
         console.print(f"📚 解析完成：普通选课 {len(courses['regular'])} 门，重修选课 {len(courses['retake'])} 门", style="green")
         return courses
 
-
-
     async def check_course_availability(self, course_id: str, is_retake: bool = False) -> Dict[str, Any]:
         """
         检查课程可用性并获取教学班信息
@@ -601,16 +606,52 @@ class BrowserAgent:
             selected_jx0404id = jx0404id  # 使用参数传入的值或None
             best_class = None
             
-            # 步骤1：进入课程选择页面
-            if is_retake:
-                course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInGgxxkxk_Ybdx?kcid={course_id}&isdyfxkc=0"
-            else:
-                course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInBxxk_Ybdx?kcid={course_id}&isdyfxkc=0"
+            # 步骤0：检查已选课程，避免重复选择（仅在第一次执行时检查）
+            try:
+                console.print("📋 检查是否已选择同名课程...", style="blue")
+                enrolled_courses = await self.check_enrolled_courses()
+                
+                # 先进入课程页面获取课程名称
+                if is_retake:
+                    course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInGgxxkxk_Ybdx?kcid={course_id}&isdyfxkc=0"
+                else:
+                    course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInBxxk_Ybdx?kcid={course_id}&isdyfxkc=0"
+                
+                console.print(f"📖 进入课程页面：{course_url[:50]}...", style="blue")
+                await self.page.goto(course_url, wait_until="networkidle")
+                
+                # 等待表格加载并获取课程名称
+                try:
+                    await self.page.wait_for_function("""
+                        () => {
+                            const table = document.querySelector('#dataView');
+                            return table && table.rows && table.rows.length > 1;
+                        }
+                    """, timeout=10000)
+                    
+                    # 从表格中获取课程名称
+                    course_name_element = await self.page.query_selector('#dataView tbody tr td:nth-child(2)')
+                    if course_name_element:
+                        current_course_name = await course_name_element.text_content()
+                        current_course_name = current_course_name.strip()
+                        console.print(f"📚 当前课程名称：{current_course_name}", style="cyan")
+                        
+                        # 检查是否已选择过同名课程
+                        if current_course_name in enrolled_courses:
+                            console.print(f"⏭️ 课程 '{current_course_name}' 已经选择过，跳过选择", style="yellow")
+                            return True  # 返回True表示不需要选择（因为已选）
+                        else:
+                            console.print(f"✅ 课程 '{current_course_name}' 未选择过，继续选课流程", style="green")
+                    else:
+                        console.print("⚠️ 无法获取课程名称，继续选课流程", style="yellow")
+                        
+                except Exception as name_error:
+                    console.print(f"⚠️ 获取课程名称失败：{name_error}，继续选课流程", style="yellow")
+                    
+            except Exception as check_error:
+                console.print(f"⚠️ 检查已选课程失败：{check_error}，继续选课流程", style="yellow")
             
-            console.print(f"📖 进入课程页面：{course_url[:50]}...", style="blue")
-            await self.page.goto(course_url, wait_until="networkidle")
-            
-            # 步骤2：等待并解析教学班表格
+            # 步骤1：等待并解析教学班表格
             try:
                 # 首先等待页面JavaScript执行
                 await self.page.wait_for_load_state("networkidle")
@@ -928,9 +969,7 @@ class BrowserAgent:
                             return False
                         
                         # 使用验证码识别服务
-                        from agents.captcha_solver_agent import CaptchaSolverAgent
-                        captcha_solver = CaptchaSolverAgent()
-                        captcha_code = captcha_solver.solve_captcha(captcha_image, manual_fallback=True)
+                        captcha_code = self.captcha_solver.solve_captcha(captcha_image, manual_fallback=True)
                         
                         if not captcha_code:
                             console.print("❌ 验证码识别失败", style="red")
@@ -1272,4 +1311,61 @@ class BrowserAgent:
                 console.print(f"❌ 点击选课按钮失败：{e}", style="red")
                 return False
 
-        return await self._retry_on_auth_error(_select) 
+        return await self._retry_on_auth_error(_select)
+
+    async def check_enrolled_courses(self) -> List[str]:
+        """
+        检查已选课程表格，获取已选课程名称列表
+        
+        Returns:
+            已选课程名称列表
+        """
+        try:
+            console.print("🔍 检查已选课程表格...", style="blue")
+            
+            # 进入选课主页面
+            main_url = f"{self.base_url}/jsxsd/xsxk/xsxk_index"
+            await self.page.goto(main_url, wait_until="networkidle")
+            
+            # 等待页面加载完成
+            await self.page.wait_for_timeout(2000)
+            
+            # 解析页面内容获取已选课程
+            content = await self.page.content()
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            enrolled_courses = []
+            
+            # 查找已选课程表格
+            tables = soup.find_all('table', class_='display')
+            for table in tables:
+                # 检查表头是否包含课程相关字段
+                thead = table.find('thead')
+                if thead:
+                    headers = [th.get_text(strip=True) for th in thead.find_all('th')]
+                    if '课程名' in headers and '选课状态' in headers:
+                        console.print("📋 找到已选课程表格", style="green")
+                        
+                        # 解析表格内容
+                        tbody = table.find('tbody')
+                        if tbody:
+                            rows = tbody.find_all('tr')
+                            for row in rows:
+                                cells = row.find_all('td')
+                                if len(cells) >= 10:  # 确保有足够的列
+                                    course_name = cells[1].get_text(strip=True)  # 课程名列
+                                    status = cells[9].get_text(strip=True)  # 选课状态列
+                                    
+                                    # 只统计状态为"选中"的课程
+                                    if status == "选中" and course_name:
+                                        enrolled_courses.append(course_name)
+                                        console.print(f"  📚 已选课程：{course_name}", style="cyan")
+                        break
+            
+            console.print(f"✅ 共找到 {len(enrolled_courses)} 门已选课程", style="green")
+            return enrolled_courses
+            
+        except Exception as e:
+            console.print(f"❌ 检查已选课程失败：{e}", style="red")
+            return [] 
