@@ -285,10 +285,8 @@ class BrowserAgent:
             # 直接 POST 请求到选课页面（参考 chooseclass.py）
             console.print("📖 正在请求选课页面...", style="blue")
             
-            # 使用正确的 HTTP 协议和路径
-            base_url_http = self.base_url.replace('https://', 'http://')
-            
-            response = await self.page.goto(f"{base_url_http}/jsxsd/xsxk/xklc_view", wait_until="networkidle")
+            # 使用HTTPS协议
+            response = await self.page.goto(f"{self.base_url}/jsxsd/xsxk/xklc_view", wait_until="networkidle")
             content = await self.page.content()
             
             # 调试：保存页面内容到文件
@@ -338,7 +336,7 @@ class BrowserAgent:
 
             # 先进入选课系统
             console.print("🔗 进入选课系统...", style="blue")
-            await self.page.goto(f"{base_url_http}/jsxsd/xsxk/xsxk_index?jx0502zbid={code}", wait_until="networkidle")
+            await self.page.goto(f"{self.base_url}/jsxsd/xsxk/xsxk_index?jx0502zbid={code}", wait_until="networkidle")
             
             # 等待iframe加载完成
             try:
@@ -427,7 +425,7 @@ class BrowserAgent:
                 console.print(f"❌ iframe处理失败：{e}", style="red")
                 # 回退到直接访问方式
                 console.print("🔄 回退到直接访问方式", style="blue")
-                await self.page.goto(f"{base_url_http}/jsxsd/xsxk/xsxk_xdxx?xkjzsj=2024-12-22%2011:00&sfkkkc=1", wait_until="networkidle")
+                await self.page.goto(f"{self.base_url}/jsxsd/xsxk/xsxk_xdxx?xkjzsj=2024-12-22%2011:00&sfkkkc=1", wait_until="networkidle")
                 
                 # 获取最终页面内容
                 content = await self.page.content()
@@ -540,25 +538,123 @@ class BrowserAgent:
             课程可用性信息，包含所有教学班
         """
         async def _check():
-            # 使用 HTTP 协议（参考 chooseclass.py）
-            base_url_http = self.base_url.replace('https://', 'http://')
-            
+            # 步骤1：先访问课程页面获取xkkcid参数（使用HTTPS）
             if is_retake:
-                # 重修课程的可用性检查URL
-                url = f"{base_url_http}/jsxsd/xsxkkc/xsxkGgxxkxk?skls=&skxq=&skjc=&sfym=false&sfct=false&szjylb=&sfxx=true&xkkcid={course_id}&iskbxk="
+                # 重修课程的页面URL
+                page_url = f"{self.base_url}/jsxsd/xsxkkc/comeInGgxxkxk_Ybdx?kcid={course_id}&isdyfxkc=0"
             else:
-                # 普通选课的可用性检查URL
-                url = f"{base_url_http}/jsxsd/xsxkkc/xsxkBxxk?xkkcid={course_id}&skls=&skxq=&skjc=&sfct=false&iskbxk=&kx="
+                # 普通选课的页面URL
+                page_url = f"{self.base_url}/jsxsd/xsxkkc/comeInBxxk_Ybdx?kcid={course_id}&isdyfxkc=0"
 
-            response = await self.page.goto(url, wait_until="networkidle")
-            content = await self.page.content()
+            # 导航到课程页面
+            await self.page.goto(page_url, wait_until="networkidle")
+            
+            # 等待页面完全加载后获取xkkcid参数
+            await self.page.wait_for_timeout(1000)  # 等待1秒确保页面完全加载
             
             try:
-                data = json.loads(content)
+                # 尝试多种方式获取xkkcid
+                xkkcid = await self.page.evaluate('''
+                    () => {
+                        const element = document.getElementById("xkkcid");
+                        if (element) {
+                            return element.value;
+                        }
+                        
+                        // 如果找不到元素，尝试从URL参数中获取
+                        const urlParams = new URLSearchParams(window.location.search);
+                        return urlParams.get('kcid');
+                    }
+                ''')
+                
+                if xkkcid:
+                    console.print(f"🔍 获取到xkkcid参数: {xkkcid}", style="cyan")
+                else:
+                    console.print("❌ 无法获取xkkcid参数，尝试使用原始course_id", style="yellow")
+                    xkkcid = course_id
+                    
+            except Exception as e:
+                console.print(f"❌ 获取xkkcid参数时出错: {e}，使用原始course_id", style="yellow")
+                xkkcid = course_id
+            
+            # 步骤2：构造JSON API URL并发送请求（根据chooseclass.py分析）
+            if is_retake:
+                # 重修课程的API URL - 使用HTTP
+                base_url_http = self.base_url.replace('https://', 'http://')
+                api_url = f"{base_url_http}/jsxsd/xsxkkc/xsxkGgxxkxk?skls=&skxq=&skjc=&sfym=false&sfct=false&szjylb=&sfxx=true&xkkcid={xkkcid}&iskbxk="
+            else:
+                # 普通选课的API URL - 使用HTTPS，注意参数名是xkkcid
+                api_url = f"{self.base_url}/jsxsd/xsxkkc/xsxkBxxk?xkkcid={xkkcid}&skls=&skxq=&skjc=&sfct=false&iskbxk=&kx="
+
+            console.print(f"🌐 请求课程数据API: {api_url}", style="blue")
+            
+            # 使用POST请求获取JSON响应（参考debug页面的DataTables实现）
+            try:
+                console.print(f"📤 发送POST请求到: {api_url}", style="blue")
+                
+                # 构造DataTables所需的POST数据（参考debug页面第237行的fnServerData调用）
+                post_data = {
+                    'sEcho': '1',
+                    'iColumns': '11',
+                    'sColumns': 'kch,kcmc,fzmc,xf,skls,sksj,skdd,xqmc,syrs,ctsm,czOper',
+                    'iDisplayStart': '0',
+                    'iDisplayLength': '15',
+                    'mDataProp_0': 'kch',
+                    'mDataProp_1': 'kcmc',
+                    'mDataProp_2': 'fzmc',
+                    'mDataProp_3': 'xf',
+                    'mDataProp_4': 'skls',
+                    'mDataProp_5': 'sksj',
+                    'mDataProp_6': 'skdd',
+                    'mDataProp_7': 'xqmc',
+                    'mDataProp_8': 'syrs',
+                    'mDataProp_9': 'ctsm',
+                    'mDataProp_10': 'czOper',
+                    'iSortCol_0': '0',
+                    'sSortDir_0': 'asc',
+                    'iSortingCols': '1',
+                    'bSortable_0': 'false',
+                    'bSortable_1': 'false',
+                    'bSortable_2': 'false',
+                    'bSortable_3': 'false',
+                    'bSortable_4': 'false',
+                    'bSortable_5': 'false',
+                    'bSortable_6': 'false',
+                    'bSortable_7': 'false',
+                    'bSortable_8': 'false',
+                    'bSortable_9': 'false',
+                    'bSortable_10': 'false'
+                }
+                
+                # 使用Playwright的HTTP客户端发送POST请求
+                context = self.page.context
+                response = await context.request.post(
+                    api_url,
+                    data=post_data,
+                    headers={
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                )
+                
+                console.print(f"📄 响应状态: {response.status}", style="cyan")
+                
+                if response.status != 200:
+                    console.print(f"❌ POST请求失败，状态码: {response.status}", style="red")
+                    return {'available': False, 'total_remaining': 0, 'classes': [], 'best_class': None}
+                
+                # 直接获取JSON响应文本
+                response_text = await response.text()
+                console.print(f"📋 JSON响应长度: {len(response_text)} 字符", style="cyan")
+                console.print(f"📋 响应前100字符: {response_text[:100]}", style="cyan")
+                
+                # 解析JSON响应
+                data = json.loads(response_text)
                 classes = []
                 total_available = 0
                 
                 if 'aaData' in data and len(data['aaData']) > 0:
+                    console.print(f"📚 找到 {len(data['aaData'])} 个教学班", style="green")
+                    
                     for class_data in data['aaData']:
                         remaining = int(class_data.get('syrs', '0'))
                         if remaining > 0:
@@ -567,20 +663,31 @@ class BrowserAgent:
                         classes.append({
                             'jx0404id': class_data.get('jx0404id', ''),
                             'remaining': remaining,
-                            'teacher': class_data.get('teacher', ''),
-                            'time': class_data.get('time', ''),
-                            'location': class_data.get('location', ''),
+                            'teacher': class_data.get('skls', ''),
+                            'time': class_data.get('sksj', ''),
+                            'location': class_data.get('skdd', ''),
+                            'campus': class_data.get('xqmc', ''),
+                            'course_name': class_data.get('kcmc', ''),
                             'available': remaining > 0
                         })
+                        
+                        console.print(f"  📋 班级: {class_data.get('kcmc', '')} - 老师: {class_data.get('skls', '')} - 剩余: {remaining}", style="cyan")
                     
-                    return {
+                    result = {
                         'available': total_available > 0,
                         'total_remaining': total_available,
                         'classes': classes,
                         'best_class': max(classes, key=lambda x: x['remaining']) if classes else None
                     }
-            except (json.JSONDecodeError, KeyError, IndexError):
-                pass
+                    
+                    console.print(f"✅ 课程可用性检查完成：总剩余名额 {total_available}", style="green")
+                    return result
+                else:
+                    console.print("❌ API响应中没有找到课程数据", style="red")
+                    
+            except (json.JSONDecodeError, KeyError, IndexError) as e:
+                console.print(f"❌ 解析JSON响应失败: {e}", style="red")
+                console.print(f"📄 响应内容: {content[:200]}...", style="yellow")
                 
             return {'available': False, 'total_remaining': 0, 'classes': [], 'best_class': None}
 
@@ -599,9 +706,6 @@ class BrowserAgent:
             选课是否成功
         """
         async def _select():
-            # 使用 HTTP 协议
-            base_url_http = self.base_url.replace('https://', 'http://')
-            
             # 初始化变量，确保作用域正确
             selected_jx0404id = jx0404id  # 使用参数传入的值或None
             best_class = None
@@ -611,11 +715,11 @@ class BrowserAgent:
                 console.print("📋 检查是否已选择同名课程...", style="blue")
                 enrolled_courses = await self.check_enrolled_courses()
                 
-                # 先进入课程页面获取课程名称
+                # 先进入课程页面获取课程名称（使用HTTPS）
                 if is_retake:
-                    course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInGgxxkxk_Ybdx?kcid={course_id}&isdyfxkc=0"
+                    course_url = f"{self.base_url}/jsxsd/xsxkkc/comeInGgxxkxk_Ybdx?kcid={course_id}&isdyfxkc=0"
                 else:
-                    course_url = f"{base_url_http}/jsxsd/xsxkkc/comeInBxxk_Ybdx?kcid={course_id}&isdyfxkc=0"
+                    course_url = f"{self.base_url}/jsxsd/xsxkkc/comeInBxxk_Ybdx?kcid={course_id}&isdyfxkc=0"
                 
                 console.print(f"📖 进入课程页面：{course_url[:50]}...", style="blue")
                 await self.page.goto(course_url, wait_until="networkidle")
@@ -651,35 +755,25 @@ class BrowserAgent:
             except Exception as check_error:
                 console.print(f"⚠️ 检查已选课程失败：{check_error}，继续选课流程", style="yellow")
             
-            # 步骤1：等待并解析教学班表格
+            # 步骤1：等待并解析教学班表格 - 使用与check_course_availability相同的逻辑
             try:
-                # 首先等待页面JavaScript执行
-                await self.page.wait_for_load_state("networkidle")
-                console.print("⏳ 等待教学班数据加载...", style="blue")
-                
-                # 等待queryKxkcList函数执行完成，通过检查表格内容来判断
                 await self.page.wait_for_function("""
                     () => {
                         const table = document.querySelector('#dataView');
                         return table && table.rows && table.rows.length > 1;
                     }
-                """, timeout=30000)
+                """, timeout=15000)
                 console.print("✅ 教学班列表加载完成", style="green")
             except Exception as e:
-                console.print(f"⚠️ 等待教学班表格超时：{e}", style="yellow")
-                
-                # 手动触发查询，防止页面JavaScript未正确执行
+                console.print(f"⚠️ 等待教学班表格超时，手动触发查询：{e}", style="yellow")
                 try:
-                    console.print("🔄 手动触发教学班查询...", style="blue")
                     await self.page.evaluate("queryKxkcList()")
-                    
-                    # 再次等待表格加载
                     await self.page.wait_for_function("""
                         () => {
                             const table = document.querySelector('#dataView');
                             return table && table.rows && table.rows.length > 1;
                         }
-                    """, timeout=15000)
+                    """, timeout=10000)
                     console.print("✅ 手动触发成功，教学班列表已加载", style="green")
                 except Exception as e2:
                     console.print(f"❌ 手动触发也失败：{e2}", style="red")

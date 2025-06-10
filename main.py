@@ -92,9 +92,10 @@ async def main():
     try:
         # 创建浏览器代理
         headless_mode = cli_agent.config.get('headless', True)
-        # 如果用户指定了 --headful 参数，则覆盖配置
-        if hasattr(args, 'headful') and args.headful:
-            headless_mode = False
+        # 如果用户指定了 --headless 参数，则覆盖配置
+        # 注意：CLI参数中--headless的action='store_false'，所以使用--headless时headless为False
+        if hasattr(args, 'headless'):
+            headless_mode = args.headless
         
         browser_agent = BrowserAgent(
             headless=headless_mode
